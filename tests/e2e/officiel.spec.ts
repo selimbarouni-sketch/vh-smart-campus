@@ -62,7 +62,7 @@ test('thème clair / sombre / automatique', async () => {
   expect(await theme()).toBe('clair');
   await bouton.click();
   expect(await theme()).toBe('sombre');
-  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(15, 20, 26)');
+  expect(await page.evaluate(() => getComputedStyle(document.body).backgroundColor)).toBe('rgb(15, 17, 21)');
   // Préférence conservée après rechargement.
   await page.reload();
   expect(await theme()).toBe('sombre');

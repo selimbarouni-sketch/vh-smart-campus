@@ -72,7 +72,7 @@ function Cadre() {
       <header className="entete">
         <Link to="/" className="marque">
           {etablissement.logo && <img src={etablissement.logo} alt="" className="marque-logo" />}
-          <span>VH Smart Campus<small>{etablissement.nomCourt}</small></span>
+          <span>{etablissement.nomCourt}<small>Vie Scolaire</small></span>
         </Link>
         <span className="utilisateur">
           <BoutonTheme />

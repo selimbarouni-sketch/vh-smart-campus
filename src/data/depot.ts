@@ -102,7 +102,7 @@ export const SERVICES_DEFAUT: ServiceCantine[] = [
 
 export const ETABLISSEMENT_DEFAUT: Etablissement = {
   nom: 'Lycée Français International Victor Hugo – Djerba',
-  nomCourt: 'LFI Victor Hugo – Djerba',
+  nomCourt: 'LFI Victor Hugo Djerba Tunisie',
   logosPartenaires: [],
   couleur: '#0f3d6e',
 };

@@ -32,7 +32,7 @@ export function FournisseurApp({ depot, children, maintenant = () => new Date() 
       setEtablissement(e);
       appliquerCouleur(e.couleur);
       appliquerIcone(e.logo);
-      document.title = `VH Smart Campus – ${e.nomCourt}`;
+      document.title = e.nomCourt;
     }).catch(() => appliquerCouleur(ETABLISSEMENT_DEFAUT.couleur));
   }, [depot, versionEtab]);
   useEffect(() => appliquerTheme(theme), [theme]);

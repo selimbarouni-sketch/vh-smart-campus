@@ -88,7 +88,7 @@ function IdentiteEtablissement() {
           <label className="case">Autre : <input type="color" value={e.couleur} onChange={(x) => setE({ ...e, couleur: x.target.value })} aria-label="Couleur personnalisée" /></label>
         </div>
         <div className="apercu-entete" style={{ background: e.couleur }}>
-          {e.logo && <img src={e.logo} alt="" className="marque-logo" />}<strong>VH Smart Campus</strong><small>{e.nomCourt}</small>
+          {e.logo && <img src={e.logo} alt="" className="marque-logo" />}<strong>{e.nomCourt}</strong><small>Vie Scolaire</small>
         </div>
       </fieldset>
       {msg && <p className={`alerte ${msg.ok ? 'alerte-ok' : 'alerte-erreur'}`} role="status">{msg.t}</p>}

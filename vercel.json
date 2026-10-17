@@ -3,7 +3,7 @@
   "framework": "vite",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/((?!assets/|vendor/|manifest.webmanifest|icone.svg).*)", "destination": "/index.html" }],
+  "rewrites": [{ "source": "/((?!assets/|vendor/|manifest.webmanifest|icone|apple-touch-icon).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/(.*)",

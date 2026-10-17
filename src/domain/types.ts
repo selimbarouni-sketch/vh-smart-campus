@@ -202,3 +202,22 @@ export interface PassageCantine {
   statut: StatutPassage;
   raison?: string;
 }
+
+/** Identité visuelle de l'établissement (lisible avant connexion : page d'accueil et de connexion). */
+export interface Etablissement {
+  nom: string;                 // « Lycée Français International Victor Hugo – Djerba »
+  nomCourt: string;            // « LFI Victor Hugo – Djerba » (cartes QR, en-tête mobile)
+  /** Logo principal, image PNG/JPEG/WebP en data URL (redimensionnée côté client). */
+  logo?: string;
+  /** Logos partenaires (réseau, tutelle), affichés en pied de page. */
+  logosPartenaires: string[];
+  /** Couleur principale du site (#rrggbb). */
+  couleur: string;
+}
+
+export interface NouveauCompte {
+  email: string;
+  nom: string;
+  roles: Role[];
+  motDePasse: string;
+}

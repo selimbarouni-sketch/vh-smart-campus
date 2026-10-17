@@ -1,10 +1,18 @@
 {
   "name": "VH Smart Campus – LFI Victor Hugo Djerba",
   "short_name": "VH Campus",
+  "description": "Cantine et emplois du temps par QR code",
   "lang": "fr",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait",
   "background_color": "#f4f6f9",
   "theme_color": "#0f3d6e",
-  "icons": [{ "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml" }]
+  "icons": [
+    { "src": "/icone-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icone-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icone-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
 }

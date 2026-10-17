@@ -15,8 +15,34 @@ service cloud.firestore {
     // « service » est un mot réservé du langage des règles : accès par crochets.
     function idPassage(d) { return d.date + '_' + d['service'] + '_' + d.eleveId; }
 
+    function cheminInstallation() { return /databases/$(database)/documents/config/installation; }
+
     match /utilisateurs/{uid} {
       allow read: if (connecte() && request.auth.uid == uid) || admin();
+      allow write: if admin();
+      // Première mise en service : le tout premier compte se déclare administrateur,
+      // dans le même lot que la création de config/installation (impossible ensuite).
+      allow create: if connecte() && request.auth.uid == uid
+        && !exists(cheminInstallation()) && existsAfter(cheminInstallation())
+        && request.resource.data.roles == ['admin'] && request.resource.data.actif == true;
+    }
+
+    match /config/installation {
+      allow get: if true;
+      allow create: if connecte() && !exists(cheminInstallation())
+        && request.resource.data.par == request.auth.uid
+        && getAfter(/databases/$(database)/documents/utilisateurs/$(request.auth.uid)).data.roles == ['admin'];
+      allow update, delete: if false;
+    }
+
+    // L'administrateur lit tous les réglages (sauvegarde complète).
+    match /config/{reglage} {
+      allow read: if admin();
+    }
+
+    // Identité de l'établissement (nom, logos, couleur) : affichée avant la connexion.
+    match /config/etablissement {
+      allow get: if true;
       allow write: if admin();
     }
 
@@ -56,18 +82,18 @@ service cloud.firestore {
     match /cantine_passages/{id} {
       allow get: if unDe(['admin', 'cantine', 'vie_scolaire', 'gestion_eleves']);
       allow list: if unDe(['admin', 'vie_scolaire', 'gestion_eleves']);
-      allow create: if unDe(['admin', 'cantine'])
-        && request.resource.data.agentUid == request.auth.uid
-        && request.resource.data.statut == 'confirme'
+      // L'administrateur peut recréer des passages lors d'une restauration de sauvegarde.
+      allow create: if request.resource.data.statut == 'confirme'
         && id == idPassage(request.resource.data)
-        && eleve(request.resource.data.eleveId).actif == true
-        && eleve(request.resource.data.eleveId).cantineAutorisee == true;
+        && (admin() || (unDe(['cantine'])
+          && request.resource.data.agentUid == request.auth.uid
+          && eleve(request.resource.data.eleveId).actif == true
+          && eleve(request.resource.data.eleveId).cantineAutorisee == true));
       allow update, delete: if false;
     }
     match /cantine_anomalies/{id} {
       allow list, get: if unDe(['admin', 'vie_scolaire', 'gestion_eleves']);
-      allow create: if unDe(['admin', 'cantine'])
-        && request.resource.data.agentUid == request.auth.uid
+      allow create: if (admin() || (unDe(['cantine']) && request.resource.data.agentUid == request.auth.uid))
         && request.resource.data.statut in ['refuse', 'doublon'];
       allow update, delete: if false;
     }
@@ -76,6 +102,16 @@ service cloud.firestore {
       allow read, create, update: if unDe(['admin', 'gestion_edt']);
       allow delete: if admin();
     }
+    // Documents sources des emplois du temps, découpés en morceaux (pas de stockage de fichiers payant).
+    match /edt_sources/{id} {
+      allow read, create, update: if unDe(['admin', 'gestion_edt']);
+      allow delete: if admin();
+      match /morceaux/{n} {
+        allow read, create, update: if unDe(['admin', 'gestion_edt']);
+        allow delete: if admin();
+      }
+    }
+
     match /edt_versions/{id} {
       allow read: if unDe(['admin', 'vie_scolaire', 'gestion_edt']);
       allow create, update: if unDe(['admin', 'gestion_edt']);
@@ -83,8 +119,7 @@ service cloud.firestore {
     }
     match /edt_modifications/{id} {
       allow read: if unDe(['admin', 'vie_scolaire', 'gestion_edt']);
-      allow create: if unDe(['admin', 'vie_scolaire', 'gestion_edt'])
-        && request.resource.data.creePar == request.auth.uid;
+      allow create: if admin() || (unDe(['vie_scolaire', 'gestion_edt']) && request.resource.data.creePar == request.auth.uid);
       // Seule l'annulation d'un changement est permise ensuite (champ "actif").
       allow update: if unDe(['admin', 'vie_scolaire', 'gestion_edt'])
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actif']);

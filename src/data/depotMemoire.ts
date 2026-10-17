@@ -1,10 +1,11 @@
 import type {
-  Calendrier, Eleve, Groupe, ImportEDT, Modification, PassageCantine, ScolariteEleve, ServiceCantine, Utilisateur, VersionEDT,
+  Calendrier, Eleve, Groupe, ImportEDT, Modification, PassageCantine, ScolariteEleve, ServiceCantine, Utilisateur, VersionEDT, Etablissement, NouveauCompte,
 } from '../domain/types';
 import type { ActionAncienne } from '../domain/publication';
 import { idPassage } from '../domain/cantine';
 import { genererJeton } from '../domain/qr';
-import { CALENDRIER_DEFAUT, SERVICES_DEFAUT, type Depot, type ResultatPassage } from './depot';
+import { CALENDRIER_DEFAUT, ETABLISSEMENT_DEFAUT, SERVICES_DEFAUT, type Depot, type ResultatPassage } from './depot';
+import { AJOUT_SEUL, type Donnees, type RapportRestauration } from '../domain/sauvegarde';
 
 interface Etat {
   utilisateurs: (Utilisateur & { motDePasse: string })[];
@@ -19,6 +20,7 @@ interface Etat {
   versions: VersionEDT[];
   modifications: Modification[];
   calendrier: Calendrier;
+  etablissement?: Etablissement;
 }
 
 const CLE = 'vhsc-demo-v1';
@@ -145,6 +147,19 @@ export class DepotMemoire implements Depot {
     try { sessionStorage.removeItem(CLE_SESSION); } catch { /* ignoré */ }
     this.abonnes.forEach((cb) => cb(null));
   }
+  /** En démonstration, aucun e-mail n'est envoyé. */
+  async envoyerReinitialisation() { /* sans effet en démonstration */ }
+  async changerMotDePasse(actuel: string, nouveau: string) {
+    const u = this.etat.utilisateurs.find((x) => x.uid === this.session?.uid);
+    if (!u || u.motDePasse !== actuel) throw new Error('Mot de passe actuel incorrect.');
+    await this.ecrire(() => { u.motDePasse = nouveau; });
+  }
+  async installationRequise() { return !this.etat.utilisateurs.some((u) => u.roles.includes('admin')); }
+  async installer(c: Omit<NouveauCompte, 'roles'>) {
+    if (!(await this.installationRequise())) throw new Error("L'installation a déjà été faite.");
+    await this.creerCompte({ ...c, roles: ['admin'] });
+    await this.connexion(c.email, c.motDePasse);
+  }
 
   async listerEleves() { return copie(this.etat.eleves); }
   async lireEleve(id: string) { return copie(this.etat.eleves.find((e) => e.id === id) ?? null); }
@@ -239,6 +254,71 @@ export class DepotMemoire implements Depot {
   async enregistrerCalendrier(c: Calendrier) { await this.ecrire(() => { this.etat.calendrier = copie(c); }); }
 
   async listerUtilisateurs() { return copie(this.etat.utilisateurs.map(({ motDePasse: _m, ...u }) => u)); }
+  async creerCompte(c: NouveauCompte) {
+    const email = c.email.trim().toLowerCase();
+    if (this.etat.utilisateurs.some((u) => u.email === email)) throw new Error('Un compte existe déjà avec cette adresse e-mail.');
+    if (c.motDePasse.length < 8) throw new Error('Mot de passe trop court (8 caractères minimum).');
+    const uid = `demo-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+    await this.ecrire(() => { this.etat.utilisateurs.push({ uid, email, nom: c.nom.trim(), roles: c.roles, actif: true, motDePasse: c.motDePasse }); });
+    return uid;
+  }
+  async lireEtablissement() { return { ...ETABLISSEMENT_DEFAUT, ...copie(this.etat.etablissement ?? {}) }; }
+  async enregistrerEtablissement(e: Etablissement) { await this.ecrire(() => { this.etat.etablissement = copie(e); }); }
+
+  async exporterDonnees(): Promise<Donnees> {
+    const parId = <T,>(liste: T[], cle: (x: T) => string, sans: (x: T) => object) => Object.fromEntries(liste.map((x) => [cle(x), copie(sans(x))])) as Record<string, Record<string, unknown>>;
+    const e = this.etat;
+    return {
+      config: { cantine: { services: copie(e.services) }, calendrier: copie(e.calendrier) as unknown as Record<string, unknown>, etablissement: copie(e.etablissement ?? ETABLISSEMENT_DEFAUT) as unknown as Record<string, unknown> },
+      utilisateurs: parId(e.utilisateurs, (u) => u.uid, ({ uid: _u, motDePasse: _m, ...r }) => r),
+      eleves: parId(e.eleves, (x) => x.id, ({ id: _i, ...r }) => r),
+      scolarites: parId(e.scolarites, (x) => x.eleveId, ({ eleveId: _i, ...r }) => r),
+      groupes: parId(e.groupes, (x) => x.id, ({ id: _i, ...r }) => r),
+      qr_jetons: parId(e.jetons, (x) => x.jeton, ({ jeton: _j, ...r }) => r),
+      cantine_passages: parId(e.passages, (x) => x.id, ({ id: _i, ...r }) => r),
+      cantine_anomalies: parId(e.anomalies, (x) => x.id, ({ id: _i, ...r }) => r),
+      edt_imports: parId(e.imports, (x) => x.id, ({ id: _i, ...r }) => r),
+      edt_versions: parId(e.versions, (x) => x.id, ({ id: _i, ...r }) => r),
+      edt_modifications: parId(e.modifications, (x) => x.id, ({ id: _i, ...r }) => r),
+      edt_sources: {},
+    };
+  }
+
+  async restaurerDonnees(d: Donnees, progression?: (fait: number, total: number) => void): Promise<RapportRestauration> {
+    let ecrits = 0, ignores = 0, fait = 0;
+    const total = Object.values(d).reduce((t, c) => t + Object.keys(c ?? {}).length, 0);
+    await this.ecrire(() => {
+      const e = this.etat;
+      const fusion = <T,>(liste: T[], nom: keyof Donnees, cle: (x: T) => string, construire: (id: string, v: Record<string, unknown>) => T): T[] => {
+        const r = [...liste];
+        for (const [id, v] of Object.entries(d[nom] ?? {})) {
+          const i = r.findIndex((x) => cle(x) === id);
+          if (i >= 0 && AJOUT_SEUL.includes(nom)) { ignores++; continue; }
+          const nouveau = construire(id, v);
+          if (i >= 0) r[i] = nouveau; else r.push(nouveau);
+          ecrits++;
+          progression?.(++fait, total);
+        }
+        return r;
+      };
+      e.eleves = fusion(e.eleves, 'eleves', (x) => x.id, (id, v) => ({ ...(v as object), id }) as Eleve);
+      e.scolarites = fusion(e.scolarites, 'scolarites', (x) => x.eleveId, (id, v) => ({ groupes: [], ...(v as object), eleveId: id }) as ScolariteEleve);
+      e.groupes = fusion(e.groupes, 'groupes', (x) => x.id, (id, v) => ({ ...(v as object), id }) as Groupe);
+      e.jetons = fusion(e.jetons, 'qr_jetons', (x) => x.jeton, (id, v) => ({ ...(v as object), jeton: id }) as Etat['jetons'][number]);
+      e.passages = fusion(e.passages, 'cantine_passages', (x) => x.id, (id, v) => ({ ...(v as object), id }) as PassageCantine);
+      e.anomalies = fusion(e.anomalies, 'cantine_anomalies', (x) => x.id, (id, v) => ({ ...(v as object), id }) as PassageCantine);
+      e.imports = fusion(e.imports, 'edt_imports', (x) => x.id, (id, v) => ({ ...(v as object), id }) as ImportEDT);
+      e.versions = fusion(e.versions, 'edt_versions', (x) => x.id, (id, v) => ({ ...(v as object), id }) as VersionEDT);
+      e.modifications = fusion(e.modifications, 'edt_modifications', (x) => x.id, (id, v) => ({ ...(v as object), id }) as Modification);
+      e.utilisateurs = fusion(e.utilisateurs, 'utilisateurs', (x) => x.uid, (id, v) => ({ motDePasse: e.utilisateurs.find((u) => u.uid === id)?.motDePasse ?? 'demo', ...(v as object), uid: id }) as Etat['utilisateurs'][number]);
+      const config = d.config ?? {};
+      if (config.cantine?.services) { e.services = config.cantine.services as ServiceCantine[]; ecrits++; }
+      if (config.calendrier) { e.calendrier = config.calendrier as unknown as Calendrier; ecrits++; }
+      if (config.etablissement) { e.etablissement = config.etablissement as unknown as Etablissement; ecrits++; }
+    });
+    return { ecrits, ignores };
+  }
+
   async enregistrerUtilisateur(u: Utilisateur) {
     await this.ecrire(() => {
       const ex = this.etat.utilisateurs.find((x) => x.uid === u.uid);

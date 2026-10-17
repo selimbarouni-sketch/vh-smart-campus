@@ -3,13 +3,16 @@ import { Link } from 'react-router-dom';
 import ExcelJS from 'exceljs';
 import { useApp, useDonnee } from '../app/contexte';
 import { filtrerPassages, lignesExport, statistiques, versCsv } from '../domain/cantine';
-import { instantLocal } from '../domain/temps';
+import { dateFr, instantLocal } from '../domain/temps';
+import { CALENDRIER_DEFAUT } from '../data/depot';
 
 const LIBELLES = { confirme: 'Confirmé', refuse: 'Refusé', doublon: 'Doublon' } as const;
 
 export function HistoriqueCantine() {
   const { depot, maintenant } = useApp();
-  const aujourdhui = instantLocal(maintenant(), 'Africa/Tunis').date;
+  const { donnee: calendrier } = useDonnee(() => depot.lireCalendrier().catch(() => CALENDRIER_DEFAUT), [depot]);
+  const fuseau = calendrier?.fuseau ?? CALENDRIER_DEFAUT.fuseau;
+  const aujourdhui = instantLocal(maintenant(), fuseau).date;
   const [debut, setDebut] = useState(aujourdhui);
   const [fin, setFin] = useState(aujourdhui);
   const [classe, setClasse] = useState('');
@@ -25,9 +28,9 @@ export function HistoriqueCantine() {
   const affichees = statut ? filtrees.filter((l) => l.statut === statut) : filtrees;
 
   const nomFichier = `passages-cantine_${debut}_${fin}`;
-  const exporterCsv = () => telecharger(new Blob([versCsv(lignesExport(filtrees, services ?? []))], { type: 'text/csv;charset=utf-8' }), `${nomFichier}.csv`);
+  const exporterCsv = () => telecharger(new Blob([versCsv(lignesExport(filtrees, services ?? [], fuseau))], { type: 'text/csv;charset=utf-8' }), `${nomFichier}.csv`);
   const exporterExcel = async () => {
-    const lignesX = lignesExport(filtrees, services ?? []);
+    const lignesX = lignesExport(filtrees, services ?? [], fuseau);
     const classeur = new ExcelJS.Workbook();
     const feuille = classeur.addWorksheet('Passages confirmés');
     feuille.columns = Object.keys(lignesX[0] ?? { Date: '' }).map((k) => ({ header: k, key: k, width: k === 'Identifiant élève' ? 22 : 16 }));
@@ -45,8 +48,16 @@ export function HistoriqueCantine() {
 
   return (
     <div className="module">
-      <div className="titre-module"><Link to="/" className="retour">← Accueil</Link><h1>Historique de la cantine</h1></div>
-      <section className="carte filtres">
+      <div className="titre-module pas-imprimer"><Link to="/" className="retour">← Accueil</Link><h1>Historique de la cantine</h1></div>
+      <div className="seulement-impression">
+        <h1>Rapport des passages à la cantine – LFI Victor Hugo Djerba</h1>
+        <p>{debut === fin ? dateFr(debut) : `Du ${dateFr(debut)} au ${dateFr(fin)}`}
+          {classe && ` · Classe ${classe}`}{service && ` · ${services?.find((s) => s.id === service)?.libelle ?? service}`}
+          {recherche && ` · Élève : ${recherche}`}{statut && ` · ${LIBELLES[statut]}s uniquement`}
+          {' · '}Édité le {new Date(maintenant()).toLocaleString('fr-FR', { timeZone: fuseau })}
+          {depot.mode === 'demo' && ' · DONNÉES FICTIVES (mode démonstration)'}</p>
+      </div>
+      <section className="carte filtres pas-imprimer">
         <label>Du <input type="date" value={debut} onChange={(e) => setDebut(e.target.value)} /></label>
         <label>Au <input type="date" value={fin} onChange={(e) => setFin(e.target.value)} /></label>
         <label>Classe <select value={classe} onChange={(e) => setClasse(e.target.value)}><option value="">Toutes</option>{classes.map((c) => <option key={c}>{c}</option>)}</select></label>
@@ -60,7 +71,8 @@ export function HistoriqueCantine() {
         <button className={`stat refus ${statut === 'refuse' ? 'actif' : ''}`} onClick={() => setStatut(statut === 'refuse' ? '' : 'refuse')}><b>{stats.refus}</b>passages refusés</button>
         <button className={`stat doublon ${statut === 'doublon' ? 'actif' : ''}`} onClick={() => setStatut(statut === 'doublon' ? '' : 'doublon')}><b>{stats.doublons}</b>doublons</button>
       </div>
-      <div className="ligne">
+      <div className="ligne pas-imprimer">
+        <button className="bouton" onClick={() => window.print()} disabled={!filtrees.length}>Rapport imprimable (PDF)</button>
         <button className="bouton" onClick={exporterExcel} disabled={!stats.passages}>Exporter (Excel)</button>
         <button className="bouton" onClick={exporterCsv} disabled={!stats.passages}>Exporter (CSV)</button>
         <span className="discret">Les exports ne contiennent que les passages confirmés.</span>
@@ -72,7 +84,7 @@ export function HistoriqueCantine() {
             {affichees.map((l) => (
               <tr key={l.id} className={`statut-${l.statut}`}>
                 <td>{l.date}</td>
-                <td>{new Date(l.horodatage).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Tunis' })}</td>
+                <td>{new Date(l.horodatage).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: fuseau })}</td>
                 <td>{services?.find((s) => s.id === l.service)?.libelle ?? l.service}</td>
                 <td>{l.nom ? `${l.prenom} ${l.nom}` : '—'}</td>
                 <td>{l.classe || '—'}</td>

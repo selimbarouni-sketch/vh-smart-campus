@@ -47,7 +47,11 @@ export const creerUtilisateur = onCall({ region: REGION }, async (req: CallableR
   const { email, nom, roles, motDePasse } = req.data ?? ({} as never);
   if (!email || !nom || !Array.isArray(roles) || !roles.every((r) => ROLES.includes(r))) throw new HttpsError('invalid-argument', 'Données invalides.');
   if (!motDePasse || motDePasse.length < 10) throw new HttpsError('invalid-argument', 'Mot de passe provisoire : 10 caractères minimum.');
-  const u = await getAuth().createUser({ email, password: motDePasse, displayName: nom });
+  const u = await getAuth().createUser({ email, password: motDePasse, displayName: nom }).catch((e: { code?: string }) => {
+    if (e?.code === 'auth/email-already-exists') throw new HttpsError('already-exists', 'Un compte existe déjà avec cette adresse e-mail.');
+    if (e?.code === 'auth/invalid-email') throw new HttpsError('invalid-argument', 'Adresse e-mail invalide.');
+    throw new HttpsError('internal', 'Création du compte impossible.');
+  });
   await getFirestore().doc(`utilisateurs/${u.uid}`).set({ email, nom, roles, actif: true });
   return { uid: u.uid };
 });

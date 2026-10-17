@@ -4,7 +4,7 @@ import type {
 import type { ActionAncienne } from '../domain/publication';
 import { idPassage } from '../domain/cantine';
 import { genererJeton } from '../domain/qr';
-import { CALENDRIER_DEFAUT, SERVICES_DEFAUT, type Depot, type ResultatPassage } from './depot';
+import { CALENDRIER_DEFAUT, SERVICES_DEFAUT, type Depot, type NouveauCompte, type ResultatPassage } from './depot';
 
 interface Etat {
   utilisateurs: (Utilisateur & { motDePasse: string })[];
@@ -243,6 +243,16 @@ export class DepotMemoire implements Depot {
     await this.ecrire(() => {
       const ex = this.etat.utilisateurs.find((x) => x.uid === u.uid);
       this.etat.utilisateurs = [...this.etat.utilisateurs.filter((x) => x.uid !== u.uid), { ...copie(u), motDePasse: ex?.motDePasse ?? 'demo' }];
+    });
+  }
+  async creerUtilisateur(c: NouveauCompte) {
+    const email = c.email.trim().toLowerCase();
+    if (!email || !c.nom.trim() || c.motDePasse.length < 10) throw new Error('Données invalides (mot de passe provisoire : 10 caractères minimum).');
+    if (this.etat.utilisateurs.some((u) => u.email.toLowerCase() === email)) throw new Error('Un compte existe déjà avec cette adresse e-mail.');
+    await this.ecrire(() => {
+      this.etat.utilisateurs = [...this.etat.utilisateurs, {
+        uid: `demo-${Date.now().toString(36)}`, email, nom: c.nom.trim(), roles: [...c.roles], actif: true, motDePasse: c.motDePasse,
+      }];
     });
   }
 }

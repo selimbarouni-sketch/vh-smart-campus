@@ -3,6 +3,14 @@ import type {
 } from '../domain/types';
 import type { ActionAncienne } from '../domain/publication';
 
+export interface NouveauCompte {
+  email: string;
+  nom: string;
+  roles: Utilisateur['roles'];
+  /** Mot de passe provisoire (10 caractères minimum), à changer par l'utilisateur. */
+  motDePasse: string;
+}
+
 export interface ResultatPassage {
   statut: 'confirme' | 'doublon';
   passage: PassageCantine;
@@ -62,6 +70,8 @@ export interface Depot {
   // Administration
   listerUtilisateurs(): Promise<Utilisateur[]>;
   enregistrerUtilisateur(u: Utilisateur): Promise<void>;
+  /** Crée un compte du personnel (authentification + profil). Réservé à l'administrateur. */
+  creerUtilisateur(c: NouveauCompte): Promise<void>;
 
   /** Analyse multimodale d'une page (fonction serveur). */
   analyseMultimodale?(imageBase64: string, typeMime: string, contexte: string): Promise<unknown>;

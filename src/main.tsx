@@ -19,6 +19,11 @@ const depot: Depot = env.VITE_FIREBASE_PROJECT_ID
     }, env.VITE_FIREBASE_REGION || 'europe-west1')
   : new DepotMemoire();
 
+// Application installable (PWA) : le service worker ne met en cache que l'interface, jamais les données.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => undefined); });
+}
+
 createRoot(document.getElementById('racine')!).render(
   <StrictMode>
     <App depot={depot} />

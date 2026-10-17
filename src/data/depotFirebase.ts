@@ -12,7 +12,7 @@ import type {
 import type { ActionAncienne } from '../domain/publication';
 import { idPassage } from '../domain/cantine';
 import { genererJeton } from '../domain/qr';
-import { CALENDRIER_DEFAUT, SERVICES_DEFAUT, type Depot, type ResultatPassage } from './depot';
+import { CALENDRIER_DEFAUT, SERVICES_DEFAUT, type Depot, type NouveauCompte, type ResultatPassage } from './depot';
 
 const C = {
   utilisateurs: 'utilisateurs', eleves: 'eleves', scolarites: 'scolarites', groupes: 'groupes', jetons: 'qr_jetons',
@@ -175,6 +175,11 @@ export class DepotFirebase implements Depot {
     return (await getDocs(collection(this.db, C.utilisateurs))).docs.map((d) => ({ uid: d.id, ...d.data() }) as Utilisateur);
   }
   async enregistrerUtilisateur(u: Utilisateur) { const { uid, ...d } = u; await setDoc(doc(this.db, C.utilisateurs, uid), d); }
+
+  async creerUtilisateur(c: NouveauCompte) {
+    // Cloud Function : la création d'un compte Firebase Auth exige les droits d'administration côté serveur.
+    await httpsCallable(getFunctions(this.app, this.region), 'creerUtilisateur')(c);
+  }
 
   async analyseMultimodale(imageBase64: string, typeMime: string, contexte: string) {
     const f = httpsCallable(getFunctions(this.app, this.region), 'analyserEmploiDuTemps', { timeout: 300_000 });

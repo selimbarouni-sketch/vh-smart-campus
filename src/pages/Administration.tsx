@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { messageErreur, useApp, useDonnee } from '../app/contexte';
 import { LIBELLES_ROLES } from '../domain/permissions';
@@ -31,9 +31,10 @@ function Utilisateurs() {
       <h2>Comptes et rôles</h2>
       <p className="discret">
         Chaque compte n'accède qu'aux fonctions de ses rôles. Le personnel de cantine ne voit que le nom, le prénom et la classe des élèves.
-        {depot.mode === 'firebase' && ' Les nouveaux comptes sont créés dans la console Firebase (Authentication), puis activés ici.'}
+        {depot.mode === 'firebase' && ' La création de compte passe par la fonction serveur « creerUtilisateur » (Cloud Functions déployées requises).'}
       </p>
       {(erreur || msg) && <p className="alerte alerte-erreur">{erreur ?? msg}</p>}
+      <NouveauCompte surCree={recharger} />
       <div className="table-defilante">
         <table>
           <thead><tr><th>Nom</th><th>E-mail</th>{ROLES.map((r) => <th key={r}>{LIBELLES_ROLES[r]}</th>)}<th>Actif</th></tr></thead>
@@ -54,6 +55,50 @@ function Utilisateurs() {
         </table>
       </div>
     </section>
+  );
+}
+
+function NouveauCompte({ surCree }: { surCree: () => void }) {
+  const { depot } = useApp();
+  const vide = { email: '', nom: '', motDePasse: '', roles: [] as Role[] };
+  const [c, setC] = useState(vide);
+  const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
+  const [envoi, setEnvoi] = useState(false);
+  const creer = async (e: FormEvent) => {
+    e.preventDefault();
+    setMsg(null);
+    if (!c.roles.length) return setMsg({ ok: false, t: 'Choisissez au moins un rôle.' });
+    if (c.motDePasse.length < 10) return setMsg({ ok: false, t: 'Mot de passe provisoire : 10 caractères minimum.' });
+    setEnvoi(true);
+    try {
+      await depot.creerUtilisateur(c);
+      setMsg({ ok: true, t: `Compte créé pour ${c.email}. Communiquez-lui le mot de passe provisoire.` });
+      setC(vide);
+      surCree();
+    } catch (err) { setMsg({ ok: false, t: messageErreur(err) }); } finally { setEnvoi(false); }
+  };
+  return (
+    <details className="nouveau-compte">
+      <summary>+ Créer un compte du personnel</summary>
+      <form className="formulaire" onSubmit={creer} data-testid="form-nouveau-compte">
+        <div className="ligne">
+          <label>Nom affiché <input value={c.nom} onChange={(e) => setC({ ...c, nom: e.target.value })} required /></label>
+          <label>E-mail <input type="email" value={c.email} onChange={(e) => setC({ ...c, email: e.target.value })} required autoComplete="off" /></label>
+          <label>Mot de passe provisoire <input type="text" value={c.motDePasse} onChange={(e) => setC({ ...c, motDePasse: e.target.value })} required autoComplete="new-password" /></label>
+        </div>
+        <fieldset>
+          <legend>Rôles</legend>
+          {ROLES.map((r) => (
+            <label key={r} className="case">
+              <input type="checkbox" checked={c.roles.includes(r)} onChange={(e) => setC({ ...c, roles: e.target.checked ? [...c.roles, r] : c.roles.filter((x) => x !== r) })} />
+              {LIBELLES_ROLES[r]}
+            </label>
+          ))}
+        </fieldset>
+        {msg && <p className={`alerte ${msg.ok ? 'alerte-ok' : 'alerte-erreur'}`}>{msg.t}</p>}
+        <button className="bouton principal" disabled={envoi}>{envoi ? 'Création…' : 'Créer le compte'}</button>
+      </form>
+    </details>
   );
 }
 

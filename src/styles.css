@@ -209,6 +209,9 @@ textarea { font: inherit; padding: .5rem; border: 1px solid var(--bord); border-
   .verification.avec-original { grid-template-columns: minmax(320px, 40%) 1fr; }
   .original { position: sticky; top: 1rem; }
 }
+.seulement-impression { display: none; }
+.nouveau-compte { margin: .5rem 0 1rem; }
+.nouveau-compte summary { cursor: pointer; font-weight: 600; color: var(--bleu); min-height: 44px; display: flex; align-items: center; }
 @page cartes { size: A4; margin: 0; }
 @media print {
   body { background: #fff; }
@@ -216,4 +219,12 @@ textarea { font: inherit; padding: .5rem; border: 1px solid var(--bord); border-
   .contenu { padding: 0; max-width: none; }
   .planches { gap: 0; }
   .page-cartes { box-shadow: none; }
+  .seulement-impression { display: block; }
+  .seulement-impression h1 { font-size: 14pt; }
+  .stats { grid-template-columns: repeat(4, 1fr); }
+  .stat { border: 1px solid #999; }
+  .table-defilante { overflow: visible; border: none; }
+  table { font-size: 9pt; }
+  th, td { white-space: normal; padding: .2rem .3rem; }
+  tr { break-inside: avoid; }
 }

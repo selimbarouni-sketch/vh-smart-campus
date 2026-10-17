@@ -21,15 +21,19 @@ export function ScanEDT() {
     try {
       const code = normaliserContenuQR(brut);
       if (!jetonValide(code)) { setEtat({ type: 'erreur', message: 'QR code invalide : ce code n’appartient pas à VH Smart Campus.' }); return; }
+      // Lectures indépendantes de l'élève lancées dès le scan : affichage plus rapide.
+      const calendrierP = depot.lireCalendrier();
+      const versionsP = depot.listerVersions();
+      calendrierP.catch(() => undefined); versionsP.catch(() => undefined);
       const id = await depot.resoudreJeton(code);
       if (!id) { setEtat({ type: 'erreur', message: 'QR code inconnu ou désactivé.' }); return; }
       const eleve = await depot.lireEleve(id);
       if (!eleve) { setEtat({ type: 'erreur', message: 'Élève introuvable.' }); return; }
       if (!eleve.actif) { setEtat({ type: 'erreur', message: "Cet élève n'est plus inscrit (fiche inactive).", eleve }); return; }
-      const calendrier = await depot.lireCalendrier();
+      const calendrier = await calendrierP;
       const { date, heure } = instantLocal(maintenant(), calendrier.fuseau);
       const [scolarite, versions, modifications] = await Promise.all([
-        depot.lireScolarite(eleve.id), depot.listerVersions(), depot.listerModifications(date, date),
+        depot.lireScolarite(eleve.id), versionsP, depot.listerModifications(date, date),
       ]);
       const journee = journeeEleve({ eleve, scolarite, date, versions, modifications, calendrier });
       setEtat({ type: 'resultat', eleve, journee, moment: momentDeLaJournee(journee.seances, heure), date, heure });

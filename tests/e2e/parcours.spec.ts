@@ -233,3 +233,15 @@ test('import d’une liste d’élèves (format Pronote, fictive) et cartes QR 6
   const nbPages = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length;
   expect(nbPages).toBe(2);
 });
+
+test('historique cantine : rapport imprimable du jour', async () => {
+  await page.clock.setFixedTime(new Date('2026-09-14T11:05:00Z'));
+  await connexion(page, 'admin@demo.local');
+  await page.goto('/cantine/historique');
+  await expect(page.getByRole('button', { name: 'Rapport imprimable (PDF)' })).toBeEnabled();
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.getByText('Rapport des passages à la cantine')).toBeVisible();
+  await expect(page.getByText('lundi 14 septembre 2026', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Exporter (CSV)' })).toBeHidden();
+  await page.emulateMedia({ media: 'screen' });
+});

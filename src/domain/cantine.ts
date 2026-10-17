@@ -58,7 +58,7 @@ export function filtrerPassages(lignes: PassageCantine[], f: FiltresPassages): P
 }
 
 /** Lignes d'export : uniquement les passages confirmés. */
-export function lignesExport(lignes: PassageCantine[], services: ServiceCantine[]) {
+export function lignesExport(lignes: PassageCantine[], services: ServiceCantine[], fuseau = 'Africa/Tunis') {
   const libelle = (id: string) => services.find((s) => s.id === id)?.libelle ?? id;
   return lignes
     .filter((l) => l.statut === 'confirme')
@@ -66,7 +66,7 @@ export function lignesExport(lignes: PassageCantine[], services: ServiceCantine[
     .map((l) => ({
       Date: l.date,
       Service: libelle(l.service),
-      Heure: new Date(l.horodatage).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: 'Africa/Tunis' }),
+      Heure: new Date(l.horodatage).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: fuseau }),
       Nom: l.nom,
       Prénom: l.prenom,
       Classe: l.classe,

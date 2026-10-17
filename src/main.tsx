@@ -10,6 +10,11 @@ import { ecouterInstallation } from './app/installation';
 
 ecouterInstallation();
 
+// Application installable (PWA) : le service worker ne met en cache que l'interface, jamais les données.
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js').catch(() => undefined); });
+}
+
 const env = import.meta.env;
 const configurationFirebase = !!env.VITE_FIREBASE_PROJECT_ID;
 // Démonstration (données fictives) : seulement sur demande explicite (VITE_MODE_DEMO=oui)

@@ -1,0 +1,94 @@
+rules_version = '2';
+// Règles de sécurité de VH Smart Campus.
+// Les droits dépendent du rôle stocké dans utilisateurs/{uid}.roles (modifiable par un administrateur uniquement).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function connecte() { return request.auth != null; }
+    function cheminProfil() { return /databases/$(database)/documents/utilisateurs/$(request.auth.uid); }
+    function profil() { return get(cheminProfil()).data; }
+    function actif() { return connecte() && exists(cheminProfil()) && profil().actif == true; }
+    function role(r) { return actif() && r in profil().roles; }
+    function admin() { return role('admin'); }
+    function unDe(roles) { return actif() && profil().roles.hasAny(roles); }
+    function eleve(id) { return get(/databases/$(database)/documents/eleves/$(id)).data; }
+    // « service » est un mot réservé du langage des règles : accès par crochets.
+    function idPassage(d) { return d.date + '_' + d['service'] + '_' + d.eleveId; }
+
+    match /utilisateurs/{uid} {
+      allow read: if (connecte() && request.auth.uid == uid) || admin();
+      allow write: if admin();
+    }
+
+    // Identité de l'élève : nom, prénom, classe, régime. Lisible par les agents de scan.
+    match /eleves/{id} {
+      allow read: if unDe(['admin', 'cantine', 'vie_scolaire', 'gestion_eleves', 'gestion_edt']);
+      allow write: if unDe(['admin', 'gestion_eleves']);
+    }
+
+    // Données pédagogiques (groupes) : jamais accessibles au personnel de cantine.
+    match /scolarites/{id} {
+      allow read: if unDe(['admin', 'vie_scolaire', 'gestion_eleves', 'gestion_edt']);
+      allow write: if unDe(['admin', 'gestion_eleves']);
+    }
+    match /groupes/{id} {
+      allow read: if unDe(['admin', 'vie_scolaire', 'gestion_eleves', 'gestion_edt']);
+      allow write: if unDe(['admin', 'gestion_eleves', 'gestion_edt']);
+    }
+
+    // Jetons QR : lecture unitaire pour scanner, jamais de liste pour les agents.
+    match /qr_jetons/{jeton} {
+      allow get: if unDe(['admin', 'cantine', 'vie_scolaire', 'gestion_edt', 'gestion_eleves']);
+      allow list: if unDe(['admin', 'gestion_eleves']);
+      allow write: if unDe(['admin', 'gestion_eleves']);
+    }
+
+    match /config/cantine {
+      allow read: if unDe(['admin', 'cantine', 'vie_scolaire', 'gestion_eleves']);
+      allow write: if admin();
+    }
+    match /config/calendrier {
+      allow read: if actif();
+      allow write: if unDe(['admin', 'gestion_edt']);
+    }
+
+    // Passages confirmés : l'identifiant date_service_eleve rend tout second passage impossible.
+    match /cantine_passages/{id} {
+      allow get: if unDe(['admin', 'cantine', 'vie_scolaire', 'gestion_eleves']);
+      allow list: if unDe(['admin', 'vie_scolaire', 'gestion_eleves']);
+      allow create: if unDe(['admin', 'cantine'])
+        && request.resource.data.agentUid == request.auth.uid
+        && request.resource.data.statut == 'confirme'
+        && id == idPassage(request.resource.data)
+        && eleve(request.resource.data.eleveId).actif == true
+        && eleve(request.resource.data.eleveId).cantineAutorisee == true;
+      allow update, delete: if false;
+    }
+    match /cantine_anomalies/{id} {
+      allow list, get: if unDe(['admin', 'vie_scolaire', 'gestion_eleves']);
+      allow create: if unDe(['admin', 'cantine'])
+        && request.resource.data.agentUid == request.auth.uid
+        && request.resource.data.statut in ['refuse', 'doublon'];
+      allow update, delete: if false;
+    }
+
+    match /edt_imports/{id} {
+      allow read, create, update: if unDe(['admin', 'gestion_edt']);
+      allow delete: if admin();
+    }
+    match /edt_versions/{id} {
+      allow read: if unDe(['admin', 'vie_scolaire', 'gestion_edt']);
+      allow create, update: if unDe(['admin', 'gestion_edt']);
+      allow delete: if false;
+    }
+    match /edt_modifications/{id} {
+      allow read: if unDe(['admin', 'vie_scolaire', 'gestion_edt']);
+      allow create: if unDe(['admin', 'vie_scolaire', 'gestion_edt'])
+        && request.resource.data.creePar == request.auth.uid;
+      // Seule l'annulation d'un changement est permise ensuite (champ "actif").
+      allow update: if unDe(['admin', 'vie_scolaire', 'gestion_edt'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actif']);
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "qr_jetons",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "eleveId", "order": "ASCENDING" },
+        { "fieldPath": "actif", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

@@ -1,0 +1,10 @@
+{
+  "name": "VH Smart Campus – LFI Victor Hugo Djerba",
+  "short_name": "VH Campus",
+  "lang": "fr",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f6f9",
+  "theme_color": "#0f3d6e",
+  "icons": [{ "src": "/icone.svg", "sizes": "any", "type": "image/svg+xml" }]
+}

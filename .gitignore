@@ -1,0 +1,15 @@
+node_modules
+dist
+functions/lib
+functions/node_modules
+public/vendor
+tests/.cache-ocr
+test-results
+playwright-report
+.env
+.env.local
+*.log
+firestore-debug.log
+*-debug.log
+tsconfig.tsbuildinfo
+*.tsbuildinfo

@@ -72,7 +72,7 @@ export function HistoriqueCantine() {
         <button className={`stat doublon ${statut === 'doublon' ? 'actif' : ''}`} onClick={() => setStatut(statut === 'doublon' ? '' : 'doublon')}><b>{stats.doublons}</b>doublons</button>
       </div>
       <div className="ligne pas-imprimer">
-        <button className="bouton" onClick={() => window.print()} disabled={!filtrees.length}>Rapport imprimable (PDF)</button>
+        <button className="bouton" onClick={() => window.print()} disabled={!affichees.length}>Rapport imprimable (PDF)</button>
         <button className="bouton" onClick={exporterExcel} disabled={!stats.passages}>Exporter (Excel)</button>
         <button className="bouton" onClick={exporterCsv} disabled={!stats.passages}>Exporter (CSV)</button>
         <span className="discret">Les exports ne contiennent que les passages confirmés.</span>

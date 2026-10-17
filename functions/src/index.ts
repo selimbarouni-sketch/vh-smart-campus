@@ -1,6 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { initializeApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
 import { getFirestore } from 'firebase-admin/firestore';
 import { defineSecret } from 'firebase-functions/params';
 import { HttpsError, onCall, type CallableRequest } from 'firebase-functions/v2/https';
@@ -9,7 +8,6 @@ import { analyserImage, type DemandeAnalyse } from './vision';
 initializeApp();
 const CLE_ANTHROPIC = defineSecret('ANTHROPIC_API_KEY');
 const REGION = 'europe-west1';
-const ROLES = ['admin', 'cantine', 'vie_scolaire', 'gestion_edt', 'gestion_eleves'];
 
 async function exigerRole(req: CallableRequest, autorises: string[]) {
   if (!req.auth) throw new HttpsError('unauthenticated', 'Connexion requise.');
@@ -40,18 +38,3 @@ export const analyserEmploiDuTemps = onCall(
     }
   },
 );
-
-/** Création d'un compte du personnel par un administrateur (aucune inscription libre). */
-export const creerUtilisateur = onCall({ region: REGION }, async (req: CallableRequest<{ email: string; nom: string; roles: string[]; motDePasse: string }>) => {
-  await exigerRole(req, ['admin']);
-  const { email, nom, roles, motDePasse } = req.data ?? ({} as never);
-  if (!email || !nom || !Array.isArray(roles) || !roles.every((r) => ROLES.includes(r))) throw new HttpsError('invalid-argument', 'Données invalides.');
-  if (!motDePasse || motDePasse.length < 10) throw new HttpsError('invalid-argument', 'Mot de passe provisoire : 10 caractères minimum.');
-  const u = await getAuth().createUser({ email, password: motDePasse, displayName: nom }).catch((e: { code?: string }) => {
-    if (e?.code === 'auth/email-already-exists') throw new HttpsError('already-exists', 'Un compte existe déjà avec cette adresse e-mail.');
-    if (e?.code === 'auth/invalid-email') throw new HttpsError('invalid-argument', 'Adresse e-mail invalide.');
-    throw new HttpsError('internal', 'Création du compte impossible.');
-  });
-  await getFirestore().doc(`utilisateurs/${u.uid}`).set({ email, nom, roles, actif: true });
-  return { uid: u.uid };
-});

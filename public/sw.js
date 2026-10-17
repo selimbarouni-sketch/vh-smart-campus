@@ -28,7 +28,7 @@ self.addEventListener('fetch', (e) => {
     return;
   }
   // Fichiers versionnés de l'interface (noms avec empreinte) et ressources statiques.
-  if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/vendor/') || url.pathname === '/icone.svg' || url.pathname === '/manifest.webmanifest') {
+  if (url.pathname.startsWith('/assets/') || url.pathname.startsWith('/vendor/') || url.pathname.startsWith('/icone') || url.pathname === '/apple-touch-icon.png' || url.pathname === '/manifest.webmanifest') {
     e.respondWith(
       caches.match(req).then((enCache) => enCache || fetch(req).then((r) => {
         if (r.ok) { const copie = r.clone(); caches.open(CACHE).then((c) => c.put(req, copie)); }

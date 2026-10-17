@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import QRCode from 'qrcode';
 import { messageErreur, useApp, useDonnee } from '../app/contexte';
 import type { Eleve, Groupe } from '../domain/types';
 import { idGroupe, normaliserClasse } from '../domain/classes';
 import { couleurClasse } from '../domain/couleursClasses';
+import { qrAvecLogo } from '../app/qrCarte';
 import { analyserListeEleves, lireTableau, rapprocher, type EleveImporte } from '../domain/importEleves';
 
 const vide = (): Eleve => ({ id: '', nom: '', prenom: '', classe: '', actif: true, cantineAutorisee: true });
@@ -63,7 +63,7 @@ export function Eleves() {
 }
 
 function FicheEleve({ eleve, groupes, fermer }: { eleve: Eleve; groupes: Groupe[]; fermer: () => void }) {
-  const { depot } = useApp();
+  const { depot, etablissement } = useApp();
   const [e, setE] = useState(eleve);
   const [groupesEleve, setGroupesEleve] = useState<string[]>([]);
   const [jeton, setJeton] = useState<string | null>(null);
@@ -75,7 +75,7 @@ function FicheEleve({ eleve, groupes, fermer }: { eleve: Eleve; groupes: Groupe[
     depot.lireScolarite(eleve.id).then((s) => setGroupesEleve(s?.groupes ?? [])).catch(() => undefined);
     depot.jetonActif(eleve.id).then(setJeton).catch(() => undefined);
   }, [eleve.id, depot]);
-  useEffect(() => { if (jeton) QRCode.toDataURL(jeton, { width: 240, margin: 2, errorCorrectionLevel: 'M' }).then(setQr); else setQr(''); }, [jeton]);
+  useEffect(() => { if (jeton) qrAvecLogo(jeton, etablissement.logo, 240).then(setQr); else setQr(''); }, [jeton, etablissement.logo]);
 
   const enregistrer = async (ev: FormEvent) => {
     ev.preventDefault();
@@ -292,7 +292,7 @@ const PAR_PAGE = 6;
 
 /** Planche de cartes : 6 cartes par page A4, une couleur par niveau et par classe. */
 function CartesQR({ eleves, retour }: { eleves: Eleve[]; retour: () => void }) {
-  const { depot } = useApp();
+  const { depot, etablissement } = useApp();
   const [cartes, setCartes] = useState<{ e: Eleve; qr: string }[] | null>(null);
   const [pageParClasse, setPageParClasse] = useState(true);
   useEffect(() => {
@@ -301,11 +301,11 @@ function CartesQR({ eleves, retour }: { eleves: Eleve[]; retour: () => void }) {
       const tries = [...eleves].sort((a, b) => a.classe.localeCompare(b.classe, 'fr', { numeric: true }) || a.nom.localeCompare(b.nom, 'fr') || a.prenom.localeCompare(b.prenom, 'fr'));
       for (const e of tries) {
         const j = await depot.jetonActif(e.id);
-        if (j) r.push({ e, qr: await QRCode.toDataURL(j, { width: 360, margin: 1, errorCorrectionLevel: 'M' }) });
+        if (j) r.push({ e, qr: await qrAvecLogo(j, etablissement.logo) });
       }
       setCartes(r);
     })();
-  }, [eleves, depot]);
+  }, [eleves, depot, etablissement.logo]);
 
   // Découpage en pages de 6, avec saut de page à chaque classe si demandé.
   const pages: { e: Eleve; qr: string }[][] = [];
@@ -335,14 +335,17 @@ function CartesQR({ eleves, retour }: { eleves: Eleve[]; retour: () => void }) {
               return (
                 <div key={e.id} className="carte-eleve" style={{ borderColor: c.fond }} data-testid="carte-eleve">
                   <div className="carte-bandeau" style={{ background: c.fond, color: c.texte }}>
-                    <span className="carte-classe">{e.classe}</span>
+                    <span className="carte-titre">
+                      {etablissement.logo && <img src={etablissement.logo} alt="" className="carte-logo" />}
+                      <span className="carte-classe">{e.classe}</span>
+                    </span>
                     <span className="carte-niveau">{c.niveau}</span>
                   </div>
                   <div className="carte-corps">
                     <img src={qr} alt="" className="carte-qr" />
                     <div className="carte-nom"><strong>{e.nom.toUpperCase()}</strong><br />{e.prenom}</div>
                   </div>
-                  <div className="carte-pied" style={{ background: c.clair }}>LFI Victor Hugo – Djerba · Cantine et emploi du temps</div>
+                  <div className="carte-pied" style={{ background: c.clair }}>{etablissement.nomCourt} · Cantine et emploi du temps</div>
                   {specimen && <div className="carte-specimen">SPÉCIMEN – NON VALABLE</div>}
                 </div>
               );

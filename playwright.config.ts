@@ -20,6 +20,6 @@ export default defineConfig({
     url: 'http://localhost:5173',
     reuseExistingServer: true,
     // Mode démonstration forcé : aucune variable Firebase.
-    env: { VITE_FIREBASE_PROJECT_ID: '' },
+    env: { VITE_FIREBASE_PROJECT_ID: '', VITE_MODE_DEMO: 'oui' },
   },
 });

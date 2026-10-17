@@ -53,7 +53,6 @@ Vercel héberge l'application web ; Firebase fournit les comptes, la base de don
    ```
 5. Premier administrateur : créer le compte dans **Authentication**, puis le document `utilisateurs/{uid}` dans Firestore :
    `{ email, nom, roles: ["admin"], actif: true }`.
-   Les comptes suivants se créent ensuite depuis **Administration > Créer un compte du personnel**, via la fonction serveur `creerUtilisateur` (mot de passe provisoire de 10 caractères minimum, rôles cochés).
 6. **Analyse multimodale (facultative)** : `npx firebase-tools functions:secrets:set ANTHROPIC_API_KEY`.
 
 ## Importer les élèves et imprimer les cartes QR

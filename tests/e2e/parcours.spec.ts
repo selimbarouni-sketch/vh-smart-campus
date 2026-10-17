@@ -34,11 +34,11 @@ test('import PDF → extraction → vérification → validation → publication
   await page.clock.setFixedTime(new Date('2026-09-14T09:30:00Z'));
   await connexion(page, 'admin@demo.local');
   await expect(page.getByText('MODE DÉMONSTRATION')).toBeVisible();
-  await expect(page.getByRole('link', { name: 'CANTINE' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'EMPLOI DU TEMPS' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'CANTINE', exact: true })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'EMPLOI DU TEMPS', exact: true })).toBeVisible();
 
   // Avant publication : avertissement, aucune information supposée.
-  await page.getByRole('link', { name: 'EMPLOI DU TEMPS' }).click();
+  await page.getByRole('link', { name: 'EMPLOI DU TEMPS', exact: true }).click();
   await scannerManuellement(page, JETON_YASSINE);
   await expect(page.getByTestId('resultat-edt')).toContainText('Emploi du temps non disponible');
 
@@ -133,7 +133,7 @@ test('changement ponctuel de salle pris en compte au scan', async () => {
 test('pause et fin des cours', async () => {
   await page.clock.setFixedTime(new Date('2026-09-14T11:30:00Z')); // 12 h 30 à Djerba
   await connexion(page, 'viesco@demo.local');
-  await page.getByRole('link', { name: 'EMPLOI DU TEMPS' }).click();
+  await page.getByRole('link', { name: 'EMPLOI DU TEMPS', exact: true }).click();
   await scannerManuellement(page, JETON_YASSINE);
   await expect(page.getByTestId('resultat-edt')).toContainText('Aucun cours en cours');
   await expect(page.getByTestId('resultat-edt')).toContainText('PROCHAIN COURS');
@@ -145,8 +145,8 @@ test('pause et fin des cours', async () => {
 test('cantine : passage, doublon, refus, historique et permissions', async () => {
   await page.clock.setFixedTime(new Date('2026-09-14T11:00:00Z')); // 12 h 00, service du déjeuner
   await connexion(page, 'cantine@demo.local');
-  await expect(page.getByRole('link', { name: 'EMPLOI DU TEMPS' })).toHaveCount(0);
-  await page.getByRole('link', { name: 'CANTINE' }).click();
+  await expect(page.getByRole('link', { name: 'EMPLOI DU TEMPS', exact: true })).toHaveCount(0);
+  await page.getByRole('link', { name: 'CANTINE', exact: true }).click();
   await expect(page.getByText('Service : Déjeuner')).toBeVisible();
   await scannerManuellement(page, JETON_YASSINE);
   await expect(page.getByTestId('resultat-cantine')).toContainText('PASSAGE ENREGISTRÉ');
@@ -232,32 +232,6 @@ test('import d’une liste d’élèves (format Pronote, fictive) et cartes QR 6
   const pdf = await page.pdf({ format: 'A4', printBackground: true, preferCSSPageSize: true });
   const nbPages = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length;
   expect(nbPages).toBe(2);
-});
-
-test('administration : création d’un compte du personnel puis connexion avec son rôle', async () => {
-  await connexion(page, 'admin@demo.local');
-  await page.goto('/administration');
-  await page.getByText('+ Créer un compte du personnel').click();
-  const form = page.getByTestId('form-nouveau-compte');
-  await form.getByLabel('Nom affiché').fill('Agent fictif 2');
-  await form.getByLabel('E-mail').fill('cantine2@demo.local');
-  await form.getByLabel('Mot de passe provisoire').fill('court');
-  await form.getByLabel('Agent de cantine').check();
-  await form.getByRole('button', { name: 'Créer le compte' }).click();
-  await expect(form).toContainText('10 caractères minimum');
-  await form.getByLabel('Mot de passe provisoire').fill('provisoire-123');
-  await form.getByRole('button', { name: 'Créer le compte' }).click();
-  await expect(form).toContainText('Compte créé pour cantine2@demo.local');
-  await expect(page.getByRole('cell', { name: 'cantine2@demo.local' })).toBeVisible();
-
-  await page.getByRole('button', { name: 'Déconnexion' }).click();
-  await page.getByLabel('Adresse e-mail').fill('cantine2@demo.local');
-  await page.getByLabel('Mot de passe').fill('provisoire-123');
-  await page.getByRole('button', { name: 'Se connecter' }).click();
-  await expect(page.getByText('Accès non autorisé')).toBeVisible();
-  await page.goto('/');
-  await expect(page.getByRole('link', { name: 'CANTINE' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'EMPLOI DU TEMPS' })).toHaveCount(0);
 });
 
 test('historique cantine : rapport imprimable du jour', async () => {

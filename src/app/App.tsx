@@ -17,6 +17,7 @@ const VersionsEDT = differe(() => import('../pages/VersionsEDT'), 'VersionsEDT')
 const ModificationsEDT = differe(() => import('../pages/ModificationsEDT'), 'ModificationsEDT');
 const Eleves = differe(() => import('../pages/Eleves'), 'Eleves');
 const Administration = differe(() => import('../pages/Administration'), 'Administration');
+const MonCompte = differe(() => import('../pages/MonCompte'), 'MonCompte');
 
 function Garde({ capacite, children }: { capacite: Capacite; children: ReactNode }) {
   const { peut } = useApp();
@@ -32,8 +33,33 @@ function Garde({ capacite, children }: { capacite: Capacite; children: ReactNode
   return <>{children}</>;
 }
 
+const LIBELLES_THEME = { auto: 'automatique', clair: 'clair', sombre: 'sombre' } as const;
+const SUIVANT = { auto: 'clair', clair: 'sombre', sombre: 'auto' } as const;
+const SYMBOLES = { auto: '◐', clair: '☀', sombre: '☾' } as const;
+
+/** Bouton de thème : automatique (réglage du téléphone) → clair → sombre. */
+export function BoutonTheme() {
+  const { theme, choisirTheme } = useApp();
+  return (
+    <button type="button" className="bouton-theme" onClick={() => choisirTheme(SUIVANT[theme])}
+      aria-label={`Thème ${LIBELLES_THEME[theme]} (changer)`} title={`Thème ${LIBELLES_THEME[theme]}`}>
+      {SYMBOLES[theme]}
+    </button>
+  );
+}
+
+function PiedDePage() {
+  const { etablissement } = useApp();
+  if (!etablissement.logosPartenaires.length) return null;
+  return (
+    <footer className="pied" aria-label="Partenaires">
+      {etablissement.logosPartenaires.map((l, i) => <img key={i} src={l} alt="" />)}
+    </footer>
+  );
+}
+
 function Cadre() {
-  const { utilisateur, chargement, depot } = useApp();
+  const { utilisateur, chargement, depot, etablissement } = useApp();
   const lieu = useLocation();
   if (chargement) return <p className="centre">Chargement…</p>;
   return (
@@ -44,13 +70,19 @@ function Cadre() {
         </div>
       )}
       <header className="entete">
-        <Link to="/" className="marque">VH Smart Campus</Link>
-        {utilisateur && (
-          <span className="utilisateur">
-            {utilisateur.nom}
-            <button className="lien" onClick={() => depot.deconnexion()}>Déconnexion</button>
-          </span>
-        )}
+        <Link to="/" className="marque">
+          {etablissement.logo && <img src={etablissement.logo} alt="" className="marque-logo" />}
+          <span>VH Smart Campus<small>{etablissement.nomCourt}</small></span>
+        </Link>
+        <span className="utilisateur">
+          <BoutonTheme />
+          {utilisateur && (
+            <>
+              <Link to="/compte" className="lien-entete" title="Mon compte">{utilisateur.nom}</Link>
+              <button className="lien" onClick={() => depot.deconnexion()}>Déconnexion</button>
+            </>
+          )}
+        </span>
       </header>
       <main className="contenu">
         {!utilisateur ? (
@@ -73,11 +105,13 @@ function Cadre() {
             <Route path="/edt/modifications" element={<Garde capacite="modifier_edt_ponctuel"><ModificationsEDT /></Garde>} />
             <Route path="/eleves" element={<Garde capacite="gerer_eleves"><Eleves /></Garde>} />
             <Route path="/administration" element={<Garde capacite="administrer"><Administration /></Garde>} />
+            <Route path="/compte" element={<MonCompte />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
           </Suspense>
         )}
       </main>
+      <PiedDePage />
     </>
   );
 }

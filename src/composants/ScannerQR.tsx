@@ -19,6 +19,9 @@ export function ScannerQR({ surLecture, delaiMemeCode = 4000 }: Props) {
   const [etatCamera, setEtatCamera] = useState<'demarrage' | 'active' | 'indisponible'>('demarrage');
   const [messageCamera, setMessageCamera] = useState('');
   const [manuel, setManuel] = useState('');
+  const piste = useRef<MediaStreamTrack | null>(null);
+  const [lampeDispo, setLampeDispo] = useState(false);
+  const [lampe, setLampe] = useState(false);
   const rappel = useRef(surLecture);
   rappel.current = surLecture;
 
@@ -76,6 +79,11 @@ export function ScannerQR({ surLecture, delaiMemeCode = 4000 }: Props) {
           await video.current.play().catch(() => undefined);
         }
         setEtatCamera('active');
+        // Lampe du téléphone (Android/Chrome) : proposée seulement si l'appareil la gère.
+        const t = flux.getVideoTracks()[0];
+        piste.current = t ?? null;
+        const capacites = (t?.getCapabilities?.() ?? {}) as { torch?: boolean };
+        setLampeDispo(!!capacites.torch);
         boucle();
       } catch (e) {
         setEtatCamera('indisponible');
@@ -91,6 +99,26 @@ export function ScannerQR({ surLecture, delaiMemeCode = 4000 }: Props) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // L'écran reste allumé pendant le scan (téléphone posé à l'entrée de la cantine).
+  useEffect(() => {
+    type Verrou = { release: () => Promise<void> };
+    const nav = navigator as unknown as { wakeLock?: { request: (t: 'screen') => Promise<Verrou> } };
+    let verrou: Verrou | null = null;
+    const demander = () => { if (document.visibilityState === 'visible') nav.wakeLock?.request('screen').then((v) => { verrou = v; }).catch(() => undefined); };
+    demander();
+    document.addEventListener('visibilitychange', demander);
+    return () => { document.removeEventListener('visibilitychange', demander); verrou?.release().catch(() => undefined); };
+  }, []);
+
+  const basculerLampe = async () => {
+    const t = piste.current;
+    if (!t) return;
+    try {
+      await t.applyConstraints({ advanced: [{ torch: !lampe } as MediaTrackConstraintSet] });
+      setLampe(!lampe);
+    } catch { setLampeDispo(false); }
+  };
 
   const envoyerManuel = async (e: FormEvent) => {
     e.preventDefault();
@@ -109,6 +137,7 @@ export function ScannerQR({ surLecture, delaiMemeCode = 4000 }: Props) {
         {etatCamera === 'demarrage' && <p className="viseur-message">Démarrage de la caméra…</p>}
         {etatCamera === 'indisponible' && <p className="viseur-message">{messageCamera}</p>}
         {etatCamera === 'active' && <div className="viseur-cadre" aria-hidden />}
+        {lampeDispo && <button type="button" className={`bouton-lampe ${lampe ? 'allumee' : ''}`} onClick={basculerLampe} aria-pressed={lampe}>{lampe ? 'Éteindre la lampe' : 'Lampe'}</button>}
       </div>
       <form className="saisie-manuelle" onSubmit={envoyerManuel}>
         <input aria-label="Code du QR (saisie manuelle)" placeholder="Saisie manuelle du code" value={manuel}

@@ -9,6 +9,7 @@ export function Accueil() {
     peut('gerer_eleves') && { a: '/eleves', t: 'Gestion des élèves' },
     peut('importer_edt') && { a: '/edt/import', t: 'Importation des emplois du temps' },
     peut('importer_edt') && { a: '/edt/versions', t: 'Versions publiées' },
+    peut('consulter_edt') && { a: '/edt/tableau', t: 'Tableau des cours' },
     peut('modifier_edt_ponctuel') && { a: '/edt/modifications', t: 'Changements ponctuels' },
     peut('historique_cantine') && { a: '/cantine/historique', t: 'Historique et exports' },
     peut('administrer') && { a: '/administration', t: 'Administration' },

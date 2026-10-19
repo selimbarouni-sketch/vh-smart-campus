@@ -3,6 +3,7 @@ import type {
 } from '../domain/types';
 import type { ActionAncienne } from '../domain/publication';
 import type { Donnees, RapportRestauration } from '../domain/sauvegarde';
+import { CRENEAU_CANTINE } from '../domain/cantine';
 
 export interface ResultatPassage {
   statut: 'confirme' | 'doublon';
@@ -46,8 +47,8 @@ export interface Depot {
   jetonActif(eleveId: string): Promise<string | null>;
 
   // Cantine
+  /** Créneaux de cantine : un seul, fixe (12 h 05 – 13 h 20). */
   servicesCantine(): Promise<ServiceCantine[]>;
-  enregistrerServices(s: ServiceCantine[]): Promise<void>;
   /** Transaction : crée le passage s'il n'existe pas (sinon : doublon journalisé). */
   enregistrerPassage(eleve: Eleve, service: string, date: string, agentUid: string): Promise<ResultatPassage>;
   journaliserRefus(p: Omit<PassageCantine, 'id' | 'statut'>): Promise<void>;
@@ -96,9 +97,7 @@ export const CALENDRIER_DEFAUT: Calendrier = {
   feries: [],
 };
 
-export const SERVICES_DEFAUT: ServiceCantine[] = [
-  { id: 'dejeuner', libelle: 'Déjeuner', debut: '11:30', fin: '14:00' },
-];
+export const SERVICES_DEFAUT: ServiceCantine[] = [CRENEAU_CANTINE];
 
 export const ETABLISSEMENT_DEFAUT: Etablissement = {
   nom: 'Lycée Français International Victor Hugo – Djerba',

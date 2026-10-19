@@ -88,7 +88,9 @@ service cloud.firestore {
         && (admin() || (unDe(['cantine'])
           && request.resource.data.agentUid == request.auth.uid
           && eleve(request.resource.data.eleveId).actif == true
-          && eleve(request.resource.data.eleveId).cantineAutorisee == true));
+          // Régime sans cantine : passage autorisé uniquement aux dates listées (ex. lundis d'un club).
+          && (eleve(request.resource.data.eleveId).cantineAutorisee == true
+            || eleve(request.resource.data.eleveId).get('datesCantine', []).hasAny([request.resource.data.date]))));
       allow update, delete: if false;
     }
     match /cantine_anomalies/{id} {

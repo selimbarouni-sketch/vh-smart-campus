@@ -31,6 +31,8 @@ export interface Eleve {
   classe: string;          // ex. "1re B"
   actif: boolean;
   cantineAutorisee: boolean;
+  /** Lundis précis (AAAA-MM-JJ) où l'élève peut manger malgré un régime sans cantine (ex. élève ayant un club). */
+  datesCantine?: string[];
 }
 
 /** Données pédagogiques : réservées à la vie scolaire, à la gestion et à l'administration. */

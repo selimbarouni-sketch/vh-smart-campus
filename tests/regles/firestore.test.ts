@@ -23,6 +23,7 @@ beforeEach(async () => {
     for (const [uid, roles] of Object.entries(ROLES)) await setDoc(doc(db, 'utilisateurs', uid), { email: `${uid}@test`, nom: uid, roles, actif: uid !== 'inactif' });
     await setDoc(doc(db, 'eleves', 'e1'), { nom: 'Fictif', prenom: 'Élève', classe: '1re B', actif: true, cantineAutorisee: true });
     await setDoc(doc(db, 'eleves', 'e2'), { nom: 'Fictif', prenom: 'Externe', classe: '1re B', actif: true, cantineAutorisee: false });
+    await setDoc(doc(db, 'eleves', 'e3'), { nom: 'Fictif', prenom: 'Club', classe: '1re B', actif: true, cantineAutorisee: false, datesCantine: ['2026-09-14'] });
     await setDoc(doc(db, 'scolarites', 'e1'), { groupes: ['ESP'] });
     await setDoc(doc(db, 'qr_jetons', 'VHSC-JETON'), { eleveId: 'e1', actif: true });
     await setDoc(doc(db, 'edt_versions', 'v1'), { statut: 'active', cibles: ['classe:1re B'], seances: [] });
@@ -49,6 +50,12 @@ describe('Personnel de cantine', () => {
     await assertSucceeds(setDoc(doc(d, 'cantine_passages', '2026-09-14_dejeuner_e1'), passage('e1', 'cantine')));
     await assertFails(setDoc(doc(d, 'cantine_passages', '2026-09-14_dejeuner_e1'), passage('e1', 'cantine')));
     await assertFails(deleteDoc(doc(d, 'cantine_passages', '2026-09-14_dejeuner_e1')));
+  });
+  it('élève sans cantine habituelle : passage uniquement aux dates listées', async () => {
+    const d = db('cantine');
+    const passageE3 = (date: string) => ({ ...passage('e3', 'cantine'), date });
+    await assertSucceeds(setDoc(doc(d, 'cantine_passages', '2026-09-14_dejeuner_e3'), passageE3('2026-09-14')));
+    await assertFails(setDoc(doc(d, 'cantine_passages', '2026-09-21_dejeuner_e3'), passageE3('2026-09-21')));
   });
   it('refuse un passage pour un élève non autorisé, un identifiant incohérent ou un autre agent', async () => {
     const d = db('cantine');

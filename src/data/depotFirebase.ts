@@ -9,7 +9,7 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type {
-  Calendrier, Eleve, Etablissement, Groupe, ImportEDT, Modification, NouveauCompte, PassageCantine, ScolariteEleve, ServiceCantine, Utilisateur, VersionEDT,
+  Calendrier, Eleve, Etablissement, Groupe, ImportEDT, Modification, NouveauCompte, PassageCantine, ScolariteEleve, Utilisateur, VersionEDT,
 } from '../domain/types';
 import type { ActionAncienne } from '../domain/publication';
 import { idPassage } from '../domain/cantine';
@@ -153,11 +153,8 @@ export class DepotFirebase implements Depot {
     return s.empty ? null : s.docs[0].id;
   }
 
-  async servicesCantine() {
-    const s = await getDoc(doc(this.db, C.config, 'cantine'));
-    return (s.data()?.services as ServiceCantine[] | undefined) ?? SERVICES_DEFAUT;
-  }
-  async enregistrerServices(services: ServiceCantine[]) { await setDoc(doc(this.db, C.config, 'cantine'), { services }); }
+  // Créneau unique et fixe : l'ancien réglage éventuel dans config/cantine n'est plus utilisé.
+  async servicesCantine() { return SERVICES_DEFAUT; }
 
   async enregistrerPassage(eleve: Eleve, service: string, date: string, agentUid: string): Promise<ResultatPassage> {
     const id = idPassage(date, service, eleve.id);

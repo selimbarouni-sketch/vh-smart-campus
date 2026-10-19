@@ -6,6 +6,7 @@ import { idGroupe, normaliserClasse } from '../domain/classes';
 import { couleurClasse } from '../domain/couleursClasses';
 import { qrAvecLogo } from '../app/qrCarte';
 import { analyserListeEleves, lireTableau, rapprocher, type EleveImporte } from '../domain/importEleves';
+import { dateFr, dateValide, jourDeLaSemaine } from '../domain/temps';
 
 const vide = (): Eleve => ({ id: '', nom: '', prenom: '', classe: '', actif: true, cantineAutorisee: true });
 
@@ -50,7 +51,7 @@ export function Eleves() {
             {liste.map((e) => (
               <tr key={e.id}>
                 <td>{e.nom}</td><td>{e.prenom}</td><td><span className="pastille" style={{ background: couleurClasse(e.classe).fond }} />{e.classe}</td>
-                <td>{e.cantineAutorisee ? 'Autorisée' : 'Non'}</td><td>{e.actif ? 'Actif' : 'Inactif'}</td>
+                <td>{e.cantineAutorisee ? 'Autorisée' : 'Non'}{e.datesCantine?.length ? ` · ${e.datesCantine.length} lundi(s)` : ''}</td><td>{e.actif ? 'Actif' : 'Inactif'}</td>
                 <td><button className="bouton petit" onClick={() => setEdite(e)}>Modifier</button></td>
               </tr>
             ))}
@@ -69,6 +70,7 @@ function FicheEleve({ eleve, groupes, fermer }: { eleve: Eleve; groupes: Groupe[
   const [jeton, setJeton] = useState<string | null>(null);
   const [qr, setQr] = useState('');
   const [erreur, setErreur] = useState<string | null>(null);
+  const [lundi, setLundi] = useState('');
 
   useEffect(() => {
     if (!eleve.id) return;
@@ -93,6 +95,14 @@ function FicheEleve({ eleve, groupes, fermer }: { eleve: Eleve; groupes: Groupe[
     try { setJeton(await depot.regenererJeton(e.id)); } catch (err) { setErreur(messageErreur(err)); }
   };
 
+  const ajouterLundi = () => {
+    if (!dateValide(lundi) || jourDeLaSemaine(lundi) !== 'lundi') { setErreur('Choisissez une date qui tombe un lundi.'); return; }
+    setErreur(null);
+    setE({ ...e, datesCantine: [...new Set([...(e.datesCantine ?? []), lundi])].sort() });
+    setLundi('');
+  };
+  const retirerLundi = (d: string) => setE({ ...e, datesCantine: (e.datesCantine ?? []).filter((x) => x !== d) });
+
   return (
     <form className="carte formulaire" onSubmit={enregistrer}>
       <h2>{eleve.id ? 'Modifier un élève' : 'Nouvel élève'}</h2>
@@ -103,6 +113,21 @@ function FicheEleve({ eleve, groupes, fermer }: { eleve: Eleve; groupes: Groupe[
       </div>
       <label className="case"><input type="checkbox" checked={e.cantineAutorisee} onChange={(x) => setE({ ...e, cantineAutorisee: x.target.checked })} /> Autorisé à la cantine</label>
       <label className="case"><input type="checkbox" checked={e.actif} onChange={(x) => setE({ ...e, actif: x.target.checked })} /> Élève actif (inscrit)</label>
+      <fieldset>
+        <legend>Cantine certains lundis (ex. élève ayant un club)</legend>
+        <p className="discret">Ces lundis précis s'ajoutent au régime de l'élève. Aucun autre jour n'est ouvert.</p>
+        <div className="ligne">
+          <label>Lundi <input type="date" value={lundi} onChange={(x) => setLundi(x.target.value)} /></label>
+          <button type="button" className="bouton" onClick={ajouterLundi} disabled={!lundi}>+ Ajouter ce lundi</button>
+        </div>
+        {e.datesCantine?.length ? (
+          <ul className="liste-simple">
+            {e.datesCantine.map((d) => (
+              <li key={d}>{dateFr(d)} <button type="button" className="lien" onClick={() => retirerLundi(d)}>Retirer</button></li>
+            ))}
+          </ul>
+        ) : <p className="discret">Aucun lundi particulier.</p>}
+      </fieldset>
       <fieldset>
         <legend>Groupes (spécialités, options, langues)</legend>
         <p className="discret">Un élève ne voit les cours d'un groupe que s'il y est explicitement associé.</p>

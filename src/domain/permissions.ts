@@ -7,6 +7,7 @@ export type Capacite =
   | 'importer_edt'
   | 'publier_edt'
   | 'modifier_edt_ponctuel'
+  | 'consulter_edt'
   | 'gerer_eleves'
   | 'voir_eleves'
   | 'administrer';
@@ -16,10 +17,10 @@ export type Capacite =
  * l'interface ne fait que masquer ce que les règles interdisent déjà.
  */
 const DROITS: Record<Role, Capacite[]> = {
-  admin: ['scanner_cantine', 'historique_cantine', 'scanner_edt', 'importer_edt', 'publier_edt', 'modifier_edt_ponctuel', 'gerer_eleves', 'voir_eleves', 'administrer'],
+  admin: ['scanner_cantine', 'historique_cantine', 'scanner_edt', 'importer_edt', 'publier_edt', 'modifier_edt_ponctuel', 'consulter_edt', 'gerer_eleves', 'voir_eleves', 'administrer'],
   cantine: ['scanner_cantine'],
-  vie_scolaire: ['scanner_edt', 'voir_eleves', 'historique_cantine', 'modifier_edt_ponctuel'],
-  gestion_edt: ['scanner_edt', 'importer_edt', 'publier_edt', 'modifier_edt_ponctuel'],
+  vie_scolaire: ['scanner_edt', 'voir_eleves', 'historique_cantine', 'modifier_edt_ponctuel', 'consulter_edt'],
+  gestion_edt: ['scanner_edt', 'importer_edt', 'publier_edt', 'modifier_edt_ponctuel', 'consulter_edt'],
   gestion_eleves: ['gerer_eleves', 'voir_eleves', 'historique_cantine'],
 };
 

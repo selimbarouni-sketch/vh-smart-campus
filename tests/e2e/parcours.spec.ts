@@ -143,7 +143,7 @@ test('pause et fin des cours', async () => {
 });
 
 test('cantine : passage, doublon, refus, historique et permissions', async () => {
-  await page.clock.setFixedTime(new Date('2026-09-14T11:00:00Z')); // 12 h 00, service du déjeuner
+  await page.clock.setFixedTime(new Date('2026-09-14T11:30:00Z')); // 12 h 30 à Tunis, dans le créneau 12 h 05 – 13 h 20
   await connexion(page, 'cantine@demo.local');
   await expect(page.getByRole('link', { name: 'EMPLOI DU TEMPS', exact: true })).toHaveCount(0);
   await page.getByRole('link', { name: 'CANTINE', exact: true }).click();

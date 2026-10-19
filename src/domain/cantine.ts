@@ -1,23 +1,32 @@
 import type { Eleve, PassageCantine, ServiceCantine } from './types';
 import { minutes } from './temps';
 
+/** Créneau unique de la cantine : aucun choix de service à l'écran. */
+export const CRENEAU_CANTINE: ServiceCantine = { id: 'dejeuner', libelle: 'Déjeuner', debut: '12:05', fin: '13:20' };
+
 export const idPassage = (date: string, service: string, eleveId: string) => `${date}_${service}_${eleveId}`;
 
 export type Controle =
   | { autorise: true }
   | { autorise: false; raison: string };
 
-/** Contrôles effectués avant d'enregistrer un passage à la cantine. */
-export function controlerEleve(eleve: Eleve | null): Controle {
-  if (!eleve) return { autorise: false, raison: 'Élève introuvable.' };
-  if (!eleve.actif) return { autorise: false, raison: "Élève inactif (n'est plus inscrit)." };
-  if (!eleve.cantineAutorisee) return { autorise: false, raison: "Élève non autorisé à la cantine (régime externe ou suspension)." };
-  return { autorise: true };
+/** Vrai pendant le créneau de cantine (bornes incluses). */
+export function dansCreneau(heure: string): boolean {
+  const h = minutes(heure);
+  return minutes(CRENEAU_CANTINE.debut) <= h && h <= minutes(CRENEAU_CANTINE.fin);
 }
 
-export function serviceEnCours(services: ServiceCantine[], heure: string): ServiceCantine | undefined {
-  const h = minutes(heure);
-  return services.find((s) => minutes(s.debut) <= h && h <= minutes(s.fin));
+/**
+ * Contrôles effectués avant d'enregistrer un passage à la cantine.
+ * Un élève non autorisé en régime habituel (ex. élève ayant un club) peut manger
+ * uniquement les dates précises listées dans `datesCantine`.
+ */
+export function controlerEleve(eleve: Eleve | null, date: string): Controle {
+  if (!eleve) return { autorise: false, raison: 'Élève introuvable.' };
+  if (!eleve.actif) return { autorise: false, raison: "Élève inactif (n'est plus inscrit)." };
+  const dateAutorisee = !!eleve.datesCantine?.includes(date);
+  if (!eleve.cantineAutorisee && !dateAutorisee) return { autorise: false, raison: "Élève non autorisé à la cantine (régime externe ou suspension)." };
+  return { autorise: true };
 }
 
 export interface StatsCantine {

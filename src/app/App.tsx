@@ -15,6 +15,7 @@ const HistoriqueCantine = differe(() => import('../pages/HistoriqueCantine'), 'H
 const ImportEDT = differe(() => import('../pages/ImportEDT'), 'ImportEDT');
 const VersionsEDT = differe(() => import('../pages/VersionsEDT'), 'VersionsEDT');
 const ModificationsEDT = differe(() => import('../pages/ModificationsEDT'), 'ModificationsEDT');
+const TableauEDT = differe(() => import('../pages/TableauEDT'), 'TableauEDT');
 const Eleves = differe(() => import('../pages/Eleves'), 'Eleves');
 const Administration = differe(() => import('../pages/Administration'), 'Administration');
 const MonCompte = differe(() => import('../pages/MonCompte'), 'MonCompte');
@@ -103,6 +104,7 @@ function Cadre() {
             <Route path="/edt/import/:id" element={<Garde capacite="importer_edt"><ImportEDT /></Garde>} />
             <Route path="/edt/copier/:source" element={<Garde capacite="importer_edt"><ImportEDT /></Garde>} />
             <Route path="/edt/versions" element={<Garde capacite="importer_edt"><VersionsEDT /></Garde>} />
+            <Route path="/edt/tableau" element={<Garde capacite="consulter_edt"><TableauEDT /></Garde>} />
             <Route path="/edt/modifications" element={<Garde capacite="modifier_edt_ponctuel"><ModificationsEDT /></Garde>} />
             <Route path="/eleves" element={<Garde capacite="gerer_eleves"><Eleves /></Garde>} />
             <Route path="/administration" element={<Garde capacite="administrer"><Administration /></Garde>} />

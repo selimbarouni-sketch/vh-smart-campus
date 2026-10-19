@@ -4,7 +4,7 @@ import { messageErreur, useApp, useDonnee } from '../app/contexte';
 import { LIBELLES_ROLES } from '../domain/permissions';
 import { typeSemaine } from '../domain/calendrier';
 import { instantLocal, lundiDe } from '../domain/temps';
-import type { Calendrier, Etablissement, Role, ServiceCantine, Utilisateur } from '../domain/types';
+import type { Calendrier, Etablissement, Role, Utilisateur } from '../domain/types';
 import { creerSauvegarde, lireSauvegarde, resumeSauvegarde, type FichierSauvegarde } from '../domain/sauvegarde';
 import { imageVersDataUrl } from '../app/images';
 
@@ -16,12 +16,11 @@ export function Administration() {
       <div className="titre-module"><Link to="/" className="retour">← Accueil</Link><h1>Administration</h1></div>
       <nav className="sommaire" aria-label="Sections">
         <a href="#etablissement">Établissement</a><a href="#comptes">Comptes</a><a href="#calendrier">Calendrier</a>
-        <a href="#services">Cantine</a><a href="#sauvegarde">Sauvegarde</a>
+        <a href="#sauvegarde">Sauvegarde</a>
       </nav>
       <IdentiteEtablissement />
       <Comptes />
       <CalendrierScolaire />
-      <Services />
       <Sauvegarde />
     </div>
   );
@@ -333,28 +332,3 @@ function Periodes({ titre, valeurs, surChangement }: { titre: string; valeurs: C
   );
 }
 
-function Services() {
-  const { depot } = useApp();
-  const { donnee } = useDonnee(() => depot.servicesCantine(), [depot]);
-  const [s, setS] = useState<ServiceCantine[] | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-  useEffect(() => { if (donnee) setS(donnee); }, [donnee]);
-  if (!s) return null;
-  const maj = (i: number, k: keyof ServiceCantine, v: string) => setS(s.map((x, j) => (j === i ? { ...x, [k]: v } : x)));
-  return (
-    <section className="carte formulaire" id="services">
-      <h2>Services de cantine</h2>
-      {s.map((x, i) => (
-        <div className="ligne" key={i}>
-          <label>Identifiant <input value={x.id} onChange={(e) => maj(i, 'id', e.target.value.replace(/[^a-z0-9_-]/gi, '').toLowerCase())} /></label>
-          <label>Libellé <input value={x.libelle} onChange={(e) => maj(i, 'libelle', e.target.value)} /></label>
-          <label>Début <input type="time" value={x.debut} onChange={(e) => maj(i, 'debut', e.target.value)} /></label>
-          <label>Fin <input type="time" value={x.fin} onChange={(e) => maj(i, 'fin', e.target.value)} /></label>
-        </div>
-      ))}
-      <button type="button" className="bouton" onClick={() => setS([...s, { id: '', libelle: '', debut: '', fin: '' }])}>+ Service</button>
-      {msg && <p className="alerte alerte-info">{msg}</p>}
-      <button className="bouton principal" onClick={() => depot.enregistrerServices(s.filter((x) => x.id)).then(() => setMsg('Services enregistrés.'), (e) => setMsg(messageErreur(e)))}>Enregistrer les services</button>
-    </section>
-  );
-}

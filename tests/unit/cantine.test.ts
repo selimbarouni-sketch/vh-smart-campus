@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { DepotMemoire, etatDemo, jetonDemo } from '../../src/data/depotMemoire';
-import { controlerEleve, filtrerPassages, lignesExport, statistiques, versCsv } from '../../src/domain/cantine';
+import { controlerEleve, dansCreneau, filtrerPassages, lignesExport, statistiques, versCsv } from '../../src/domain/cantine';
 import { genererJeton, jetonValide } from '../../src/domain/qr';
 import { peut } from '../../src/domain/permissions';
 
@@ -51,10 +51,24 @@ describe('Passages à la cantine', () => {
     expect((await depot.enregistrerPassage(e, 'dejeuner', '2026-09-14', 'agent')).statut).toBe('confirme');
   });
   it('contrôles : élève inactif ou non autorisé', async () => {
-    expect(controlerEleve((await depot.lireEleve('demo-e3'))!)).toMatchObject({ autorise: false });
-    expect(controlerEleve((await depot.lireEleve('demo-e5'))!)).toMatchObject({ autorise: false });
-    expect(controlerEleve((await depot.lireEleve('demo-e1'))!)).toEqual({ autorise: true });
-    expect(controlerEleve(null)).toMatchObject({ autorise: false });
+    const date = '2026-09-14';
+    expect(controlerEleve((await depot.lireEleve('demo-e3'))!, date)).toMatchObject({ autorise: false });
+    expect(controlerEleve((await depot.lireEleve('demo-e5'))!, date)).toMatchObject({ autorise: false });
+    expect(controlerEleve((await depot.lireEleve('demo-e1'))!, date)).toEqual({ autorise: true });
+    expect(controlerEleve(null, date)).toMatchObject({ autorise: false });
+  });
+  it('élève sans cantine habituelle : mangeur uniquement les lundis listés', () => {
+    const externe = { id: 'x', nom: 'N', prenom: 'P', classe: '1re B', actif: true, cantineAutorisee: false, datesCantine: ['2026-09-14', '2026-10-05'] };
+    expect(controlerEleve(externe, '2026-09-14')).toEqual({ autorise: true });
+    expect(controlerEleve(externe, '2026-09-21')).toMatchObject({ autorise: false });
+    // Un élève inactif reste refusé, même à une date listée.
+    expect(controlerEleve({ ...externe, actif: false }, '2026-09-14')).toMatchObject({ autorise: false });
+  });
+  it('créneau de cantine : 12 h 05 à 13 h 20 inclus, rien avant ni après', () => {
+    expect(dansCreneau('12:04')).toBe(false);
+    expect(dansCreneau('12:05')).toBe(true);
+    expect(dansCreneau('13:20')).toBe(true);
+    expect(dansCreneau('13:21')).toBe(false);
   });
   it('statistiques séparées, filtres et exports limités aux passages confirmés', async () => {
     const [e1, e2, e4] = await Promise.all(['demo-e1', 'demo-e2', 'demo-e4'].map((id) => depot.lireEleve(id)));

@@ -190,8 +190,7 @@ export class DepotMemoire implements Depot {
     return this.etat.jetons.find((j) => j.eleveId === eleveId && j.actif)?.jeton ?? null;
   }
 
-  async servicesCantine() { return copie(this.etat.services); }
-  async enregistrerServices(s: ServiceCantine[]) { await this.ecrire(() => { this.etat.services = copie(s); }); }
+  async servicesCantine() { return copie(SERVICES_DEFAUT); }
   async enregistrerPassage(eleve: Eleve, service: string, date: string, agentUid: string): Promise<ResultatPassage> {
     return this.ecrire(() => {
       const id = idPassage(date, service, eleve.id);

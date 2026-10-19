@@ -233,3 +233,20 @@ test('import d’une liste d’élèves (format Pronote, fictive) et cartes QR 6
   const nbPages = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) ?? []).length;
   expect(nbPages).toBe(2);
 });
+
+test('modifier un emploi du temps publié sans réimporter le fichier', async () => {
+  await connexion(page, 'edt@demo.local');
+  await page.goto('/edt/versions');
+  await page.getByRole('link', { name: 'Modifier', exact: true }).first().click();
+  await expect(page).toHaveURL(/\/edt\/import\/imp-/);
+  await expect(page.locator('details summary', { hasText: 'remarque' })).toBeVisible();
+  await expect(page.getByText('Brouillon (non vérifié)')).toBeVisible();
+  await expect(page.getByTestId('ligne-seance')).toHaveCount(18);
+  // Correction ponctuelle d'une séance, puis nouvelle validation et publication.
+  const premiere = page.getByTestId('ligne-seance').first();
+  await premiere.getByLabel('Salle', { exact: true }).fill('Salle 999');
+  await page.getByTestId('case-relu').check();
+  await page.getByRole('button', { name: 'Valider la vérification' }).click();
+  await page.getByRole('button', { name: 'Publier cet emploi du temps' }).click();
+  await expect(page.getByText(/Emploi du temps publié le/)).toBeVisible();
+});

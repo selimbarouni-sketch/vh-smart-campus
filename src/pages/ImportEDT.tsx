@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { messageErreur, useApp, useDonnee } from '../app/contexte';
 import { TableauVerification } from '../composants/TableauVerification';
@@ -7,6 +7,7 @@ import { actionsSurAnciennes, ciblesImport, ErreurPublication, modifierSeances, 
 import { instantLocal } from '../domain/temps';
 import type { ImportEDT as Import, Seance, TypeDocument } from '../domain/types';
 import { bilan, verifierSeances } from '../domain/verification';
+import { nouvelId } from '../extraction/analyseTableau';
 import { chargerDocument, extraireDocument, imagePourVision, type DocumentCharge } from '../extraction/navigateur';
 import { seancesDepuisVision } from '../extraction/vision';
 
@@ -14,7 +15,39 @@ const ETAPES = ['Document', 'Extraction', 'Vérification', 'Publication'];
 
 export function ImportEDT() {
   const { depot, utilisateur, maintenant } = useApp();
-  const { id } = useParams();
+  const { id, source } = useParams();
+  const copieFaite = useRef(false);
+
+  // Modification d'un emploi du temps publié : brouillon copié de ses séances, sans nouveau fichier.
+  // Le document source reste le même ; on corrige les séances puis on republie.
+  useEffect(() => {
+    if (!source || !utilisateur || copieFaite.current) return;
+    copieFaite.current = true;
+    (async () => {
+      try {
+        const origine = await depot.lireImport(source);
+        if (!origine) { setErreur('Emploi du temps d’origine introuvable.'); return; }
+        const versions = await depot.listerVersions();
+        const copie: Import = {
+          ...origine,
+          id: `imp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`,
+          statut: 'brouillon',
+          version: prochaineVersion(ciblesImport(origine), versions),
+          importePar: utilisateur.uid,
+          importeParNom: utilisateur.nom,
+          importeLe: maintenant().toISOString(),
+          seances: origine.seances.map((s) => ({ ...s, id: nouvelId() })),
+          avertissements: [`Modification de la version ${origine.version} : séances copiées, sans nouveau fichier.`],
+          valideePar: undefined, valideeLe: undefined,
+          publieePar: undefined, publieeLe: undefined,
+          archiveeLe: undefined, remplacePar: undefined,
+        };
+        await depot.enregistrerImport(copie);
+        naviguer(`/edt/import/${copie.id}`, { replace: true });
+      } catch (e) { setErreur(messageErreur(e)); }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [source, utilisateur?.uid]);
   const naviguer = useNavigate();
   const { donnee: groupes, recharger: rechargerGroupes } = useDonnee(() => depot.listerGroupes(), [depot]);
   const { donnee: eleves } = useDonnee(() => depot.listerEleves().catch(() => []), [depot]);
@@ -310,7 +343,7 @@ export function ImportEDT() {
           {imp.statut === 'publie' && (
             <div className="alerte alerte-ok" role="status">
               ✔ Emploi du temps publié le {new Date(imp.publieeLe!).toLocaleString('fr-FR')}. Il est désormais utilisé pour l'affichage après scan.
-              <div><Link to="/edt/versions">Voir les versions publiées</Link> · <a href="/edt/import">Importer un autre document</a></div>
+              <div><Link to="/edt/versions">Voir les versions publiées</Link> · <Link to={`/edt/copier/${imp.id}`}>Modifier cet emploi du temps</Link> · <a href="/edt/import">Importer un autre document</a></div>
             </div>
           )}
           {(imp.statut === 'archive' || imp.statut === 'rejete') && <p className="alerte alerte-info">Cet import est {LIBELLES_STATUT[imp.statut].toLowerCase()}.</p>}

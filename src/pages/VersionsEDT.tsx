@@ -19,7 +19,7 @@ export function VersionsEDT() {
       {erreur && <p className="alerte alerte-erreur">{erreur}</p>}
       <div className="table-defilante">
         <table>
-          <thead><tr><th>Document</th><th>Classes / groupes</th><th>Version</th><th>Validité</th><th>Statut</th><th>Importé</th><th>Validé</th><th>Publié</th></tr></thead>
+          <thead><tr><th>Document</th><th>Classes / groupes</th><th>Version</th><th>Validité</th><th>Statut</th><th>Importé</th><th>Validé</th><th>Publié</th><th></th></tr></thead>
           <tbody>
             {tries.map((i) => {
               const v = versions?.find((x) => x.id === i.id);
@@ -33,10 +33,11 @@ export function VersionsEDT() {
                   <td>{new Date(i.importeLe).toLocaleDateString('fr-FR')} · {i.importeParNom}</td>
                   <td>{i.valideeLe ? new Date(i.valideeLe).toLocaleDateString('fr-FR') : '—'}</td>
                   <td>{i.publieeLe ? new Date(i.publieeLe).toLocaleDateString('fr-FR') : '—'}</td>
+                  <td>{i.statut === 'publie' && <Link to={`/edt/copier/${i.id}`} className="bouton petit">Modifier</Link>}</td>
                 </tr>
               );
             })}
-            {tries.length === 0 && <tr><td colSpan={8} className="centre discret">Aucun import.</td></tr>}
+            {tries.length === 0 && <tr><td colSpan={9} className="centre discret">Aucun import.</td></tr>}
           </tbody>
         </table>
       </div>

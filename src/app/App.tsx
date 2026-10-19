@@ -101,6 +101,7 @@ function Cadre() {
             <Route path="/edt" element={<Garde capacite="scanner_edt"><ScanEDT /></Garde>} />
             <Route path="/edt/import" element={<Garde capacite="importer_edt"><ImportEDT /></Garde>} />
             <Route path="/edt/import/:id" element={<Garde capacite="importer_edt"><ImportEDT /></Garde>} />
+            <Route path="/edt/copier/:source" element={<Garde capacite="importer_edt"><ImportEDT /></Garde>} />
             <Route path="/edt/versions" element={<Garde capacite="importer_edt"><VersionsEDT /></Garde>} />
             <Route path="/edt/modifications" element={<Garde capacite="modifier_edt_ponctuel"><ModificationsEDT /></Garde>} />
             <Route path="/eleves" element={<Garde capacite="gerer_eleves"><Eleves /></Garde>} />

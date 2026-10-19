@@ -6,9 +6,10 @@ import { DepotFirebase } from './data/depotFirebase';
 import { DepotMemoire } from './data/depotMemoire';
 import type { Depot } from './data/depot';
 import './styles.css';
-import { ecouterInstallation } from './app/installation';
+import { ecouterInstallation, enregistrerServiceWorker } from './app/installation';
 
 ecouterInstallation();
+enregistrerServiceWorker();
 
 const env = import.meta.env;
 const configurationFirebase = !!env.VITE_FIREBASE_PROJECT_ID;

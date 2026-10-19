@@ -15,6 +15,14 @@ export function ecouterInstallation() {
   window.addEventListener('appinstalled', () => { invite = null; abonnes.forEach((f) => f()); });
 }
 
+/** Enregistre le service worker (requis par Chrome pour l'installation). Sans effet hors production. */
+export function enregistrerServiceWorker() {
+  if (!import.meta.env.PROD || !('serviceWorker' in navigator)) return;
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => { /* installation indisponible : l'app reste utilisable */ });
+  });
+}
+
 export const installationPossible = () => !!invite;
 export const dejaInstallee = () => window.matchMedia?.('(display-mode: standalone)').matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
 export const estIphone = () => /iphone|ipad|ipod/i.test(navigator.userAgent);

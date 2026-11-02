@@ -6,7 +6,7 @@ import { doc, getDoc, getDocs, collection, setDoc, updateDoc, deleteDoc } from '
 
 let env: RulesTestEnvironment;
 const ROLES: Record<string, string[]> = {
-  admin: ['admin'], cantine: ['cantine'], viesco: ['vie_scolaire'], edt: ['gestion_edt'], eleves: ['gestion_eleves'], inactif: ['admin'],
+  admin: ['admin'], cantine: ['cantine'], viesco: ['vie_scolaire'], edt: ['gestion_edt'], eleves: ['gestion_eleves'], bus: ['bus'], inactif: ['admin'],
 };
 
 beforeAll(async () => {
@@ -24,6 +24,8 @@ beforeEach(async () => {
     await setDoc(doc(db, 'eleves', 'e1'), { nom: 'Fictif', prenom: 'Élève', classe: '1re B', actif: true, cantineAutorisee: true });
     await setDoc(doc(db, 'eleves', 'e2'), { nom: 'Fictif', prenom: 'Externe', classe: '1re B', actif: true, cantineAutorisee: false });
     await setDoc(doc(db, 'eleves', 'e3'), { nom: 'Fictif', prenom: 'Club', classe: '1re B', actif: true, cantineAutorisee: false, datesCantine: ['2026-09-14'] });
+    await setDoc(doc(db, 'eleves', 'e4'), { nom: 'Fictif', prenom: 'Bus', classe: '1re B', actif: true, cantineAutorisee: true, bus: true, station: 'Midoun' });
+    await setDoc(doc(db, 'config', 'modules'), { busActif: true });
     await setDoc(doc(db, 'scolarites', 'e1'), { groupes: ['ESP'] });
     await setDoc(doc(db, 'qr_jetons', 'VHSC-JETON'), { eleveId: 'e1', actif: true });
     await setDoc(doc(db, 'edt_versions', 'v1'), { statut: 'active', cibles: ['classe:1re B'], seances: [] });
@@ -88,5 +90,29 @@ describe('Autres rôles', () => {
     await assertFails(getDoc(doc(db('inactif'), 'eleves', 'e1')));
     await assertFails(getDoc(doc(db(null), 'eleves', 'e1')));
     await assertFails(getDoc(doc(db(null), 'qr_jetons', 'VHSC-JETON')));
+  });
+});
+
+describe('Agent de bus', () => {
+  const montee = (eleveId: string, trajet = 'aller') => ({
+    eleveId, nom: 'Fictif', prenom: 'Élève', classe: '1re B', station: 'Midoun', date: '2026-11-02', trajet, horodatage: 'x', agentUid: 'bus', statut: 'confirme',
+  });
+  it('monte un élève inscrit au bus ; un second passage sur le même trajet est refusé', async () => {
+    const d = db('bus');
+    await assertSucceeds(setDoc(doc(d, 'bus_passages', '2026-11-02_aller_e4'), montee('e4')));
+    await assertFails(setDoc(doc(d, 'bus_passages', '2026-11-02_aller_e4'), montee('e4')));
+  });
+  it('refuse un élève qui ne prend pas le bus, un trajet inconnu et toute lecture des montées', async () => {
+    const d = db('bus');
+    await assertFails(setDoc(doc(d, 'bus_passages', '2026-11-02_aller_e1'), montee('e1')));
+    await assertFails(setDoc(doc(d, 'bus_passages', '2026-11-02_midi_e4'), montee('e4', 'midi')));
+    await assertFails(getDocs(collection(d, 'bus_passages')));
+  });
+  it('refuse les montées tant que le module bus est désactivé', async () => {
+    await env.withSecurityRulesDisabled(async (ctx) => setDoc(doc(ctx.firestore(), 'config', 'modules'), { busActif: false }));
+    await assertFails(setDoc(doc(db('bus'), 'bus_passages', '2026-11-02_retour_e4'), montee('e4', 'retour')));
+  });
+  it('les autres rôles ne scannent pas le bus', async () => {
+    await assertFails(setDoc(doc(db('cantine'), 'bus_passages', '2026-11-02_aller_e4'), montee('e4')));
   });
 });

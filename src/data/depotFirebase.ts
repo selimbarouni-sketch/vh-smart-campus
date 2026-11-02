@@ -9,13 +9,15 @@ import {
 } from 'firebase/firestore';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 import type {
-  Calendrier, Eleve, Etablissement, Groupe, ImportEDT, Modification, NouveauCompte, PassageCantine, ScolariteEleve, Utilisateur, VersionEDT,
+  Calendrier, CreneauCantine, Eleve, Etablissement, Groupe, ImportEDT, Modification, Modules, NouveauCompte, PassageBus, PassageCantine, ScolariteEleve,
+  Trajet, Utilisateur, VersionEDT,
 } from '../domain/types';
 import type { ActionAncienne } from '../domain/publication';
 import { idPassage } from '../domain/cantine';
+import { idPassageBus } from '../domain/bus';
 import { genererJeton } from '../domain/qr';
 import { AJOUT_SEUL, COLLECTIONS_SAUVEGARDE, type Donnees, type RapportRestauration } from '../domain/sauvegarde';
-import { CALENDRIER_DEFAUT, ETABLISSEMENT_DEFAUT, SERVICES_DEFAUT, type Depot, type ResultatPassage } from './depot';
+import { CALENDRIER_DEFAUT, CRENEAU_DEFAUT, ETABLISSEMENT_DEFAUT, MODULES_DEFAUT, SERVICES_DEFAUT, type Depot, type ResultatPassage, type ResultatPassageBus } from './depot';
 
 /** Taille d'un morceau de document source (base64) : sous la limite de 1 Mio d'un document Firestore. */
 const TAILLE_MORCEAU = 700_000;
@@ -42,7 +44,7 @@ function versJson(v: unknown): unknown {
 
 const C = {
   utilisateurs: 'utilisateurs', eleves: 'eleves', scolarites: 'scolarites', groupes: 'groupes', jetons: 'qr_jetons',
-  config: 'config', passages: 'cantine_passages', anomalies: 'cantine_anomalies',
+  config: 'config', passages: 'cantine_passages', anomalies: 'cantine_anomalies', passagesBus: 'bus_passages',
   imports: 'edt_imports', versions: 'edt_versions', modifications: 'edt_modifications', sources: 'edt_sources',
 };
 
@@ -153,8 +155,34 @@ export class DepotFirebase implements Depot {
     return s.empty ? null : s.docs[0].id;
   }
 
-  // Créneau unique et fixe : l'ancien réglage éventuel dans config/cantine n'est plus utilisé.
-  async servicesCantine() { return SERVICES_DEFAUT; }
+  async servicesCantine() {
+    return [{ ...SERVICES_DEFAUT[0], ...(await this.lireCreneauCantine()) }];
+  }
+  async lireCreneauCantine(): Promise<CreneauCantine> {
+    const d = (await getDoc(doc(this.db, C.config, 'cantine'))).data();
+    return { debut: d?.debut ?? CRENEAU_DEFAUT.debut, fin: d?.fin ?? CRENEAU_DEFAUT.fin };
+  }
+  async enregistrerCreneauCantine(c: CreneauCantine) {
+    await setDoc(doc(this.db, C.config, 'cantine'), { debut: c.debut, fin: c.fin }, { merge: true });
+  }
+  async lireModules(): Promise<Modules> {
+    const d = (await getDoc(doc(this.db, C.config, 'modules'))).data() as Partial<Modules> | undefined;
+    return { ...MODULES_DEFAUT, ...d };
+  }
+  async enregistrerModules(m: Modules) { await setDoc(doc(this.db, C.config, 'modules'), { busActif: m.busActif }); }
+
+  async enregistrerPassageBus(eleve: Eleve, trajet: Trajet, date: string, agentUid: string): Promise<ResultatPassageBus> {
+    const id = idPassageBus(date, trajet, eleve.id);
+    const refPassage = doc(this.db, C.passagesBus, id);
+    const base = { eleveId: eleve.id, nom: eleve.nom, prenom: eleve.prenom, classe: eleve.classe, station: eleve.station ?? '', date, trajet, agentUid };
+    return runTransaction(this.db, async (t) => {
+      const existant = await t.get(refPassage);
+      if (existant.exists()) return { statut: 'doublon' as const, passage: { id, ...existant.data() } as PassageBus };
+      const p = { ...base, horodatage: new Date().toISOString(), statut: 'confirme' as const };
+      t.set(refPassage, { ...p, serveur: serverTimestamp() });
+      return { statut: 'confirme' as const, passage: { id, ...p } };
+    });
+  }
 
   async enregistrerPassage(eleve: Eleve, service: string, date: string, agentUid: string): Promise<ResultatPassage> {
     const id = idPassage(date, service, eleve.id);

@@ -7,6 +7,7 @@ import { Connexion } from '../pages/Connexion';
 import { Accueil } from '../pages/Accueil';
 import { ScanCantine } from '../pages/ScanCantine';
 import { ScanEDT } from '../pages/ScanEDT';
+import { ScanBus } from '../pages/ScanBus';
 
 // Écrans lourds (pdf.js, OCR, export Excel) chargés à la demande : l'accueil et les scanners restent légers.
 const differe = <K extends string>(charger: () => Promise<Record<K, () => JSX.Element>>, nom: K) =>
@@ -100,6 +101,7 @@ function Cadre() {
             <Route path="/cantine" element={<Garde capacite="scanner_cantine"><ScanCantine /></Garde>} />
             <Route path="/cantine/historique" element={<Garde capacite="historique_cantine"><HistoriqueCantine /></Garde>} />
             <Route path="/edt" element={<Garde capacite="scanner_edt"><ScanEDT /></Garde>} />
+            <Route path="/bus" element={<Garde capacite="scanner_bus"><ScanBus /></Garde>} />
             <Route path="/edt/import" element={<Garde capacite="importer_edt"><ImportEDT /></Garde>} />
             <Route path="/edt/import/:id" element={<Garde capacite="importer_edt"><ImportEDT /></Garde>} />
             <Route path="/edt/copier/:source" element={<Garde capacite="importer_edt"><ImportEDT /></Garde>} />

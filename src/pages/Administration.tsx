@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { messageErreur, useApp, useDonnee } from '../app/contexte';
 import { LIBELLES_ROLES } from '../domain/permissions';
 import { typeSemaine } from '../domain/calendrier';
-import { instantLocal, lundiDe } from '../domain/temps';
+import { heureValide, instantLocal, lundiDe, minutes } from '../domain/temps';
 import type { Calendrier, Etablissement, Role, Utilisateur } from '../domain/types';
 import { creerSauvegarde, lireSauvegarde, resumeSauvegarde, type FichierSauvegarde } from '../domain/sauvegarde';
 import { imageVersDataUrl } from '../app/images';
@@ -16,11 +16,12 @@ export function Administration() {
       <div className="titre-module"><Link to="/" className="retour">← Accueil</Link><h1>Administration</h1></div>
       <nav className="sommaire" aria-label="Sections">
         <a href="#etablissement">Établissement</a><a href="#comptes">Comptes</a><a href="#calendrier">Calendrier</a>
-        <a href="#sauvegarde">Sauvegarde</a>
+        <a href="#modules">Cantine et bus</a><a href="#sauvegarde">Sauvegarde</a>
       </nav>
       <IdentiteEtablissement />
       <Comptes />
       <CalendrierScolaire />
+      <CantineEtBus />
       <Sauvegarde />
     </div>
   );
@@ -188,6 +189,60 @@ function Comptes() {
           );
         })}
       </div>
+    </section>
+  );
+}
+
+/** Créneau de la cantine (début et fin de scan) et activation du module bus. */
+function CantineEtBus() {
+  const { depot } = useApp();
+  const { donnee: creneau } = useDonnee(() => depot.lireCreneauCantine(), [depot]);
+  const { donnee: modules } = useDonnee(() => depot.lireModules(), [depot]);
+  const [debut, setDebut] = useState('');
+  const [fin, setFin] = useState('');
+  const [busActif, setBusActif] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => { if (creneau) { setDebut(creneau.debut); setFin(creneau.fin); } }, [creneau]);
+  useEffect(() => { if (modules) setBusActif(modules.busActif); }, [modules]);
+
+  const enregistrerCreneau = async (ev: FormEvent) => {
+    ev.preventDefault();
+    if (!heureValide(debut) || !heureValide(fin) || minutes(debut) >= minutes(fin)) {
+      setMsg("L'heure de début doit être antérieure à l'heure de fin.");
+      return;
+    }
+    try {
+      await depot.enregistrerCreneauCantine({ debut, fin });
+      setMsg(`Créneau de la cantine enregistré : de ${debut} à ${fin}.`);
+    } catch (e) { setMsg(messageErreur(e)); }
+  };
+  const changerBus = async (actif: boolean) => {
+    setBusActif(actif);
+    try {
+      await depot.enregistrerModules({ busActif: actif });
+      setMsg(`Module bus ${actif ? 'activé' : 'désactivé'}.`);
+    } catch (e) {
+      setBusActif(!actif);
+      setMsg(messageErreur(e));
+    }
+  };
+
+  return (
+    <section className="carte formulaire" id="modules">
+      <h2>Cantine et bus</h2>
+      <form onSubmit={enregistrerCreneau}>
+        <h3>Créneau de la cantine</h3>
+        <p className="discret">Le scan de la cantine ne fonctionne que pendant ce créneau.</p>
+        <div className="ligne">
+          <label>Début <input type="time" value={debut} onChange={(e) => setDebut(e.target.value)} required /></label>
+          <label>Fin <input type="time" value={fin} onChange={(e) => setFin(e.target.value)} required /></label>
+        </div>
+        <button className="bouton principal">Enregistrer le créneau</button>
+      </form>
+      <h3>Module bus</h3>
+      <p className="discret">Le scan des montées dans le bus n'est disponible que lorsque le module est activé.</p>
+      <label className="case"><input type="checkbox" checked={busActif} onChange={(e) => changerBus(e.target.checked)} /> Module bus activé</label>
+      {msg && <p className="alerte alerte-info" role="status">{msg}</p>}
     </section>
   );
 }

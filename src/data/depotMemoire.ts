@@ -1,10 +1,12 @@
 import type {
-  Calendrier, Eleve, Groupe, ImportEDT, Modification, PassageCantine, ScolariteEleve, ServiceCantine, Utilisateur, VersionEDT, Etablissement, NouveauCompte,
+  Calendrier, CreneauCantine, Eleve, Groupe, ImportEDT, Modification, Modules, PassageBus, PassageCantine, ScolariteEleve, ServiceCantine, Trajet, Utilisateur,
+  VersionEDT, Etablissement, NouveauCompte,
 } from '../domain/types';
+import { idPassageBus } from '../domain/bus';
 import type { ActionAncienne } from '../domain/publication';
 import { idPassage } from '../domain/cantine';
 import { genererJeton } from '../domain/qr';
-import { CALENDRIER_DEFAUT, ETABLISSEMENT_DEFAUT, SERVICES_DEFAUT, type Depot, type ResultatPassage } from './depot';
+import { CALENDRIER_DEFAUT, CRENEAU_DEFAUT, ETABLISSEMENT_DEFAUT, MODULES_DEFAUT, SERVICES_DEFAUT, type Depot, type ResultatPassage, type ResultatPassageBus } from './depot';
 import { AJOUT_SEUL, type Donnees, type RapportRestauration } from '../domain/sauvegarde';
 
 interface Etat {
@@ -14,6 +16,9 @@ interface Etat {
   groupes: Groupe[];
   jetons: { jeton: string; eleveId: string; actif: boolean; creeLe: string }[];
   services: ServiceCantine[];
+  creneau?: CreneauCantine;
+  modules?: Modules;
+  passagesBus?: PassageBus[];
   passages: PassageCantine[];
   anomalies: PassageCantine[];
   imports: ImportEDT[];
@@ -32,8 +37,8 @@ export const jetonDemo = (nom: string) => `VHSC-${('DEMO' + nom).padEnd(24, 'A')
 /** Données de démonstration : TOUTES FICTIVES. L'interface affiche un bandeau permanent en mode démo. */
 export function etatDemo(): Etat {
   const eleves: Eleve[] = [
-    { id: 'demo-e1', nom: 'Ben Ali (fictif)', prenom: 'Yassine', classe: '1re B', actif: true, cantineAutorisee: true },
-    { id: 'demo-e2', nom: 'Exemple (fictif)', prenom: 'Lina', classe: '1re B', actif: true, cantineAutorisee: true },
+    { id: 'demo-e1', nom: 'Ben Ali (fictif)', prenom: 'Yassine', classe: '1re B', actif: true, cantineAutorisee: true, bus: true, station: 'Houmt Souk' },
+    { id: 'demo-e2', nom: 'Exemple (fictif)', prenom: 'Lina', classe: '1re B', actif: true, cantineAutorisee: true, bus: true, station: 'Midoun' },
     { id: 'demo-e3', nom: 'Test (fictif)', prenom: 'Adam', classe: '1re B', actif: true, cantineAutorisee: false },
     { id: 'demo-e4', nom: 'Essai (fictif)', prenom: 'Sarra', classe: '2nde 1', actif: true, cantineAutorisee: true },
     { id: 'demo-e5', nom: 'Ancien (fictif)', prenom: 'Omar', classe: '1re B', actif: false, cantineAutorisee: true },
@@ -51,6 +56,7 @@ export function etatDemo(): Etat {
       { uid: 'demo-cantine', email: 'cantine@demo.local', nom: 'Agent cantine (démo)', roles: ['cantine'], actif: true, motDePasse: 'demo' },
       { uid: 'demo-viesco', email: 'viesco@demo.local', nom: 'Vie scolaire (démo)', roles: ['vie_scolaire'], actif: true, motDePasse: 'demo' },
       { uid: 'demo-edt', email: 'edt@demo.local', nom: 'Gestion EDT (démo)', roles: ['gestion_edt'], actif: true, motDePasse: 'demo' },
+      { uid: 'demo-bus', email: 'bus@demo.local', nom: 'Agent bus (démo)', roles: ['bus'], actif: true, motDePasse: 'demo' },
     ],
     eleves,
     scolarites: [
@@ -190,7 +196,24 @@ export class DepotMemoire implements Depot {
     return this.etat.jetons.find((j) => j.eleveId === eleveId && j.actif)?.jeton ?? null;
   }
 
-  async servicesCantine() { return copie(SERVICES_DEFAUT); }
+  async servicesCantine() { return [{ ...SERVICES_DEFAUT[0], ...(await this.lireCreneauCantine()) }]; }
+  async lireCreneauCantine() { return copie(this.etat.creneau ?? CRENEAU_DEFAUT); }
+  async enregistrerCreneauCantine(c: CreneauCantine) { await this.ecrire(() => { this.etat.creneau = copie(c); }); }
+  async lireModules() { return copie({ ...MODULES_DEFAUT, ...this.etat.modules }); }
+  async enregistrerModules(m: Modules) { await this.ecrire(() => { this.etat.modules = copie(m); }); }
+  async enregistrerPassageBus(eleve: Eleve, trajet: Trajet, date: string, agentUid: string): Promise<ResultatPassageBus> {
+    return this.ecrire(() => {
+      const id = idPassageBus(date, trajet, eleve.id);
+      const existant = (this.etat.passagesBus ??= []).find((p) => p.id === id);
+      if (existant) return { statut: 'doublon' as const, passage: copie(existant) };
+      const p: PassageBus = {
+        id, eleveId: eleve.id, nom: eleve.nom, prenom: eleve.prenom, classe: eleve.classe, station: eleve.station ?? '',
+        date, trajet, horodatage: new Date().toISOString(), agentUid, statut: 'confirme',
+      };
+      this.etat.passagesBus!.push(p);
+      return { statut: 'confirme' as const, passage: copie(p) };
+    });
+  }
   async enregistrerPassage(eleve: Eleve, service: string, date: string, agentUid: string): Promise<ResultatPassage> {
     return this.ecrire(() => {
       const id = idPassage(date, service, eleve.id);

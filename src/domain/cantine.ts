@@ -1,4 +1,4 @@
-import type { Eleve, PassageCantine, ServiceCantine } from './types';
+import type { CreneauCantine, Eleve, PassageCantine, ServiceCantine } from './types';
 import { minutes } from './temps';
 
 /** Créneau unique de la cantine : aucun choix de service à l'écran. */
@@ -11,9 +11,9 @@ export type Controle =
   | { autorise: false; raison: string };
 
 /** Vrai pendant le créneau de cantine (bornes incluses). */
-export function dansCreneau(heure: string): boolean {
+export function dansCreneau(heure: string, creneau: CreneauCantine = CRENEAU_CANTINE): boolean {
   const h = minutes(heure);
-  return minutes(CRENEAU_CANTINE.debut) <= h && h <= minutes(CRENEAU_CANTINE.fin);
+  return minutes(creneau.debut) <= h && h <= minutes(creneau.fin);
 }
 
 /**

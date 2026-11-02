@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { dejaInstallee, estIphone, installationPossible, installer, surChangementInstallation } from '../app/installation';
-import { useApp } from '../app/contexte';
+import { useApp, useDonnee } from '../app/contexte';
 
 export function Accueil() {
-  const { peut } = useApp();
+  const { peut, depot } = useApp();
+  const { donnee: modules } = useDonnee(() => depot.lireModules(), [depot]);
+  const busActif = !!modules?.busActif;
   const secondaires = [
     peut('gerer_eleves') && { a: '/eleves', t: 'Gestion des élèves' },
     peut('importer_edt') && { a: '/edt/import', t: 'Importation des emplois du temps' },
@@ -21,6 +23,7 @@ export function Accueil() {
       <div className="grands-boutons">
         {peut('scanner_cantine') && <Link to="/cantine" className="grand-bouton cantine">CANTINE</Link>}
         {peut('scanner_edt') && <Link to="/edt" className="grand-bouton edt">EMPLOI DU TEMPS</Link>}
+        {peut('scanner_bus') && busActif && <Link to="/bus" className="grand-bouton bus">BUS</Link>}
       </div>
       <BlocInstallation />
       {secondaires.length > 0 && (

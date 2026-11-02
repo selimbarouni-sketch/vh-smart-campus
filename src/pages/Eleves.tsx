@@ -28,6 +28,14 @@ export function Eleves() {
 
   const [importer, setImporter] = useState(false);
 
+  // Bus : modification directe dans la liste ; la station n'a de sens que pour un élève qui prend le bus.
+  const majBus = async (e: Eleve, bus: boolean, station: string) => {
+    try {
+      await depot.enregistrerEleve({ ...e, bus, station: bus ? station.trim() : '' });
+      recharger();
+    } catch (err) { setMessage(messageErreur(err)); }
+  };
+
   if (cartes) return <CartesQR eleves={cartes} retour={() => setCartes(null)} />;
   if (importer) return <ImportListe existants={eleves ?? []} fermer={(m) => { setImporter(false); if (m) setMessage(m); recharger(); }} />;
 
@@ -46,12 +54,25 @@ export function Eleves() {
       {edite && <FicheEleve eleve={edite} groupes={groupes ?? []} fermer={() => { setEdite(null); recharger(); }} />}
       <div className="table-defilante">
         <table>
-          <thead><tr><th>Nom</th><th>Prénom</th><th>Classe</th><th>Cantine</th><th>Statut</th><th></th></tr></thead>
+          <thead><tr><th>Nom</th><th>Prénom</th><th>Classe</th><th>Cantine</th><th>Bus</th><th>Station</th><th>Statut</th><th></th></tr></thead>
           <tbody>
             {liste.map((e) => (
               <tr key={e.id}>
                 <td>{e.nom}</td><td>{e.prenom}</td><td><span className="pastille" style={{ background: couleurClasse(e.classe).fond }} />{e.classe}</td>
-                <td>{e.cantineAutorisee ? 'Autorisée' : 'Non'}{e.datesCantine?.length ? ` · ${e.datesCantine.length} lundi(s)` : ''}</td><td>{e.actif ? 'Actif' : 'Inactif'}</td>
+                <td>{e.cantineAutorisee ? 'Autorisée' : 'Non'}{e.datesCantine?.length ? ` · ${e.datesCantine.length} lundi(s)` : ''}</td>
+                <td><input type="checkbox" aria-label={`Prend le bus : ${e.prenom} ${e.nom}`} checked={!!e.bus} onChange={(x) => majBus(e, x.target.checked, e.station ?? '')} /></td>
+                <td>
+                  <input
+                    key={`${e.id}-${e.station ?? ''}`}
+                    className="saisie-station"
+                    aria-label={`Station : ${e.prenom} ${e.nom}`}
+                    defaultValue={e.station ?? ''}
+                    placeholder={e.bus ? 'Station' : '—'}
+                    disabled={!e.bus}
+                    onBlur={(x) => { if (x.target.value.trim() !== (e.station ?? '')) majBus(e, true, x.target.value); }}
+                  />
+                </td>
+                <td>{e.actif ? 'Actif' : 'Inactif'}</td>
                 <td><button className="bouton petit" onClick={() => setEdite(e)}>Modifier</button></td>
               </tr>
             ))}

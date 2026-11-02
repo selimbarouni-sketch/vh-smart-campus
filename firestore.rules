@@ -14,6 +14,8 @@ service cloud.firestore {
     function eleve(id) { return get(/databases/$(database)/documents/eleves/$(id)).data; }
     // « service » est un mot réservé du langage des règles : accès par crochets.
     function idPassage(d) { return d.date + '_' + d['service'] + '_' + d.eleveId; }
+    // Module bus : passages acceptés uniquement lorsque l'administrateur l'a activé.
+    function busActif() { return exists(/databases/$(database)/documents/config/modules) && get(/databases/$(database)/documents/config/modules).data.busActif == true; }
 
     function cheminInstallation() { return /databases/$(database)/documents/config/installation; }
 
@@ -48,7 +50,7 @@ service cloud.firestore {
 
     // Identité de l'élève : nom, prénom, classe, régime. Lisible par les agents de scan.
     match /eleves/{id} {
-      allow read: if unDe(['admin', 'cantine', 'vie_scolaire', 'gestion_eleves', 'gestion_edt']);
+      allow read: if unDe(['admin', 'cantine', 'bus', 'vie_scolaire', 'gestion_eleves', 'gestion_edt']);
       allow write: if unDe(['admin', 'gestion_eleves']);
     }
 
@@ -64,7 +66,7 @@ service cloud.firestore {
 
     // Jetons QR : lecture unitaire pour scanner, jamais de liste pour les agents.
     match /qr_jetons/{jeton} {
-      allow get: if unDe(['admin', 'cantine', 'vie_scolaire', 'gestion_edt', 'gestion_eleves']);
+      allow get: if unDe(['admin', 'cantine', 'bus', 'vie_scolaire', 'gestion_edt', 'gestion_eleves']);
       allow list: if unDe(['admin', 'gestion_eleves']);
       allow write: if unDe(['admin', 'gestion_eleves']);
     }
@@ -76,6 +78,25 @@ service cloud.firestore {
     match /config/calendrier {
       allow read: if actif();
       allow write: if unDe(['admin', 'gestion_edt']);
+    }
+    // Interrupteurs des modules (bus) : lisibles par tout compte actif, modifiables par l'administrateur.
+    match /config/modules {
+      allow read: if actif();
+      allow write: if admin();
+    }
+
+    // Montées dans le bus : un seul passage par élève, par date et par trajet (identifiant date_trajet_eleve).
+    match /bus_passages/{id} {
+      allow read: if unDe(['admin', 'vie_scolaire']);
+      allow create: if request.resource.data.statut == 'confirme'
+        && request.resource.data.trajet in ['aller', 'retour']
+        && id == request.resource.data.date + '_' + request.resource.data.trajet + '_' + request.resource.data.eleveId
+        && unDe(['bus'])
+        && request.resource.data.agentUid == request.auth.uid
+        && busActif()
+        && eleve(request.resource.data.eleveId).actif == true
+        && eleve(request.resource.data.eleveId).get('bus', false) == true;
+      allow update, delete: if false;
     }
 
     // Passages confirmés : l'identifiant date_service_eleve rend tout second passage impossible.

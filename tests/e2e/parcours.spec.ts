@@ -142,6 +142,25 @@ test('pause et fin des cours', async () => {
   await expect(page.getByTestId('resultat-edt')).toContainText('Fin des cours');
 });
 
+test('bus : activation par l’administrateur, montée, station et doublon', async () => {
+  await connexion(page, 'bus@demo.local');
+  await expect(page.getByRole('link', { name: 'BUS', exact: true })).toHaveCount(0);
+  // Le module est désactivé : l'agent de bus ne peut pas scanner.
+  await page.goto('/bus');
+  await expect(page.getByText('Le module bus est désactivé')).toBeVisible();
+  await connexion(page, 'admin@demo.local');
+  await page.getByRole('link', { name: 'Administration', exact: true }).click();
+  await page.getByLabel('Module bus activé').check();
+  await expect(page.getByText('Module bus activé.', { exact: true })).toBeVisible();
+  await connexion(page, 'bus@demo.local');
+  await page.getByRole('link', { name: 'BUS', exact: true }).click();
+  await scannerManuellement(page, JETON_YASSINE);
+  await expect(page.getByTestId('resultat-bus')).toContainText('MONTÉE ENREGISTRÉE');
+  await expect(page.getByTestId('resultat-bus')).toContainText('Station : Houmt Souk');
+  await scannerManuellement(page, JETON_YASSINE);
+  await expect(page.getByTestId('resultat-bus')).toContainText('DÉJÀ MONTÉ');
+});
+
 test('cantine : passage, doublon, refus, historique et permissions', async () => {
   await page.clock.setFixedTime(new Date('2026-09-14T11:30:00Z')); // 12 h 30 à Tunis, dans le créneau 12 h 05 – 13 h 20
   await connexion(page, 'cantine@demo.local');

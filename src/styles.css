@@ -387,6 +387,7 @@ input:focus, select:focus, textarea:focus { outline: none; border-color: var(--o
 .grand-bouton:hover { transform: translateY(-2px); }
 .grand-bouton.cantine { background: linear-gradient(135deg, #c9a24a, #8a6522); }
 .grand-bouton.edt { background: linear-gradient(135deg, var(--entete), #0b0f17); }
+.grand-bouton.bus { background: linear-gradient(135deg, #2f6f5e, #173f34); }
 .acces-secondaires .bouton { justify-content: flex-start; padding-left: 1.2rem; }
 .sommaire a { border-radius: 999px; background: var(--surface); }
 .etapes li { border-radius: 999px; }

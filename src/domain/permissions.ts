@@ -8,6 +8,7 @@ export type Capacite =
   | 'publier_edt'
   | 'modifier_edt_ponctuel'
   | 'consulter_edt'
+  | 'scanner_bus'
   | 'gerer_eleves'
   | 'voir_eleves'
   | 'administrer';
@@ -17,8 +18,9 @@ export type Capacite =
  * l'interface ne fait que masquer ce que les règles interdisent déjà.
  */
 const DROITS: Record<Role, Capacite[]> = {
-  admin: ['scanner_cantine', 'historique_cantine', 'scanner_edt', 'importer_edt', 'publier_edt', 'modifier_edt_ponctuel', 'consulter_edt', 'gerer_eleves', 'voir_eleves', 'administrer'],
+  admin: ['scanner_cantine', 'historique_cantine', 'scanner_edt', 'importer_edt', 'publier_edt', 'modifier_edt_ponctuel', 'consulter_edt', 'scanner_bus', 'gerer_eleves', 'voir_eleves', 'administrer'],
   cantine: ['scanner_cantine'],
+  bus: ['scanner_bus'],
   vie_scolaire: ['scanner_edt', 'voir_eleves', 'historique_cantine', 'modifier_edt_ponctuel', 'consulter_edt'],
   gestion_edt: ['scanner_edt', 'importer_edt', 'publier_edt', 'modifier_edt_ponctuel', 'consulter_edt'],
   gestion_eleves: ['gerer_eleves', 'voir_eleves', 'historique_cantine'],
@@ -34,4 +36,5 @@ export const LIBELLES_ROLES: Record<Role, string> = {
   vie_scolaire: 'Vie scolaire',
   gestion_edt: 'Gestion des emplois du temps',
   gestion_eleves: 'Gestion des élèves',
+  bus: 'Agent de bus',
 };

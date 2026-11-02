@@ -7,7 +7,8 @@ export type Role =
   | 'cantine'          // agent de cantine : scan cantine uniquement
   | 'vie_scolaire'     // scan emploi du temps, consultation des élèves
   | 'gestion_edt'      // import, vérification et publication des emplois du temps
-  | 'gestion_eleves';  // création des élèves, groupes, QR codes
+  | 'gestion_eleves'   // création des élèves, groupes, QR codes
+  | 'bus';             // agent de bus : scan des élèves montant dans le bus
 
 export interface Utilisateur {
   uid: string;
@@ -31,6 +32,10 @@ export interface Eleve {
   classe: string;          // ex. "1re B"
   actif: boolean;
   cantineAutorisee: boolean;
+  /** Prend le bus scolaire. */
+  bus?: boolean;
+  /** Station de bus (ex. « Houmt Souk »), renseignée seulement si l'élève prend le bus. */
+  station?: string;
   /** Lundis précis (AAAA-MM-JJ) où l'élève peut manger malgré un régime sans cantine (ex. élève ayant un club). */
   datesCantine?: string[];
 }
@@ -187,6 +192,34 @@ export interface ServiceCantine {
   libelle: string;         // "Déjeuner"
   debut: string;
   fin: string;
+}
+
+/** Créneau de la cantine, réglable par l'administrateur. */
+export interface CreneauCantine {
+  debut: string;           // "12:05"
+  fin: string;             // "13:20"
+}
+
+/** Interrupteurs des modules, activés selon le contexte (ex. le bus seulement pendant l'année). */
+export interface Modules {
+  busActif: boolean;
+}
+
+/** Trajet du bus : aller (matin) ou retour (soir). */
+export type Trajet = 'aller' | 'retour';
+
+export interface PassageBus {
+  id: string;
+  eleveId: string;
+  nom: string;
+  prenom: string;
+  classe: string;
+  station: string;         // station au moment du passage
+  date: string;
+  trajet: Trajet;
+  horodatage: string;      // ISO
+  agentUid: string;
+  statut: 'confirme';
 }
 
 export type StatutPassage = 'confirme' | 'refuse' | 'doublon';

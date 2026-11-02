@@ -1,5 +1,6 @@
 import type {
-  Calendrier, Eleve, Etablissement, Groupe, ImportEDT, Modification, NouveauCompte, PassageCantine, ScolariteEleve, ServiceCantine, Utilisateur, VersionEDT,
+  Calendrier, CreneauCantine, Eleve, Etablissement, Groupe, ImportEDT, Modification, Modules, NouveauCompte, PassageBus, PassageCantine, ScolariteEleve,
+  ServiceCantine, Trajet, Utilisateur, VersionEDT,
 } from '../domain/types';
 import type { ActionAncienne } from '../domain/publication';
 import type { Donnees, RapportRestauration } from '../domain/sauvegarde';
@@ -9,6 +10,14 @@ export interface ResultatPassage {
   statut: 'confirme' | 'doublon';
   passage: PassageCantine;
 }
+
+export interface ResultatPassageBus {
+  statut: 'confirme' | 'doublon';
+  passage: PassageBus;
+}
+
+export const CRENEAU_DEFAUT: CreneauCantine = { debut: '12:05', fin: '13:20' };
+export const MODULES_DEFAUT: Modules = { busActif: false };
 
 /**
  * Accès aux données. Deux implémentations :
@@ -47,8 +56,16 @@ export interface Depot {
   jetonActif(eleveId: string): Promise<string | null>;
 
   // Cantine
-  /** Créneaux de cantine : un seul, fixe (12 h 05 – 13 h 20). */
+  /** Service de cantine unique, dont les horaires viennent du créneau réglé par l'administrateur. */
   servicesCantine(): Promise<ServiceCantine[]>;
+  /** Créneau de la cantine (12 h 05 – 13 h 20 par défaut). */
+  lireCreneauCantine(): Promise<CreneauCantine>;
+  enregistrerCreneauCantine(c: CreneauCantine): Promise<void>;
+  /** Modules activables selon le contexte (bus). */
+  lireModules(): Promise<Modules>;
+  enregistrerModules(m: Modules): Promise<void>;
+  /** Montée d'un élève dans le bus : doublon refusé pour la même date et le même trajet. */
+  enregistrerPassageBus(eleve: Eleve, trajet: Trajet, date: string, agentUid: string): Promise<ResultatPassageBus>;
   /** Transaction : crée le passage s'il n'existe pas (sinon : doublon journalisé). */
   enregistrerPassage(eleve: Eleve, service: string, date: string, agentUid: string): Promise<ResultatPassage>;
   journaliserRefus(p: Omit<PassageCantine, 'id' | 'statut'>): Promise<void>;

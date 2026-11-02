@@ -18,18 +18,20 @@ export function ScanCantine() {
   const { depot, utilisateur, maintenant } = useApp();
   const { donnee: cal } = useDonnee(() => depot.lireCalendrier().catch(() => CALENDRIER_DEFAUT), [depot]);
   const fuseau = cal?.fuseau ?? CALENDRIER_DEFAUT.fuseau;
+  const { donnee: creneauRegle } = useDonnee(() => depot.lireCreneauCantine(), [depot]);
+  const creneau = creneauRegle ?? CRENEAU_CANTINE;
   const [resultat, setResultat] = useState<Resultat | null>(null);
   const [compteur, setCompteur] = useState(0);
   const [traitement, setTraitement] = useState(false);
   const [, rafraichir] = useState(0);
   const minuteur = useRef<number>();
 
-  // Le créneau (12 h 05 – 13 h 20) est réévalué régulièrement : le scan s'ouvre et se ferme seul.
+  // Le créneau réglé par l'administrateur est réévalué régulièrement : le scan s'ouvre et se ferme seul.
   useEffect(() => {
     const t = window.setInterval(() => rafraichir((n) => n + 1), 30000);
     return () => window.clearInterval(t);
   }, []);
-  const ouvert = dansCreneau(instantLocal(maintenant(), fuseau).heure);
+  const ouvert = dansCreneau(instantLocal(maintenant(), fuseau).heure, creneau);
 
   const afficher = (r: Resultat) => {
     setResultat(r);
@@ -43,7 +45,7 @@ export function ScanCantine() {
 
   const lecture = async (brut: string) => {
     const { date, heure } = instantLocal(maintenant(), fuseau);
-    if (!utilisateur || !dansCreneau(heure)) return;
+    if (!utilisateur || !dansCreneau(heure, creneau)) return;
     setTraitement(true);
     const service = CRENEAU_CANTINE.id;
     const refus = async (eleve: Eleve | null, raison: string) => {
@@ -86,10 +88,10 @@ export function ScanCantine() {
         <h1>Cantine</h1>
       </div>
       <p className="discret">
-        Service : <strong>{CRENEAU_CANTINE.libelle}</strong> · de {heureFr(CRENEAU_CANTINE.debut)} à {heureFr(CRENEAU_CANTINE.fin)} · {compteur} passage(s) enregistré(s) sur cet appareil
+        Service : <strong>{CRENEAU_CANTINE.libelle}</strong> · de {heureFr(creneau.debut)} à {heureFr(creneau.fin)} · {compteur} passage(s) enregistré(s) sur cet appareil
       </p>
       {!ouvert ? (
-        <p className="alerte alerte-attention">Scan fermé : la cantine est ouverte de {heureFr(CRENEAU_CANTINE.debut)} à {heureFr(CRENEAU_CANTINE.fin)}.</p>
+        <p className="alerte alerte-attention">Scan fermé : la cantine est ouverte de {heureFr(creneau.debut)} à {heureFr(creneau.fin)}.</p>
       ) : (
         <>
           <ScannerQR surLecture={lecture} />

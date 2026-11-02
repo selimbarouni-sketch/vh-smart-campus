@@ -269,3 +269,15 @@ test('modifier un emploi du temps publié sans réimporter le fichier', async ()
   await page.getByRole('button', { name: 'Publier cet emploi du temps' }).click();
   await expect(page.getByText(/Emploi du temps publié le/)).toBeVisible();
 });
+
+test('historique cantine : rapport imprimable du jour', async () => {
+  await page.clock.setFixedTime(new Date('2026-09-14T11:05:00Z'));
+  await connexion(page, 'admin@demo.local');
+  await page.goto('/cantine/historique');
+  await expect(page.getByRole('button', { name: 'Rapport imprimable (PDF)' })).toBeEnabled();
+  await page.emulateMedia({ media: 'print' });
+  await expect(page.getByText('Rapport des passages à la cantine')).toBeVisible();
+  await expect(page.getByText('lundi 14 septembre 2026', { exact: false })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Exporter (CSV)' })).toBeHidden();
+  await page.emulateMedia({ media: 'screen' });
+});

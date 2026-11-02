@@ -1,6 +1,6 @@
 # VH Smart Campus : LFI Victor Hugo Djerba
 
-Application web mobile (PWA), entièrement en français, avec deux modules qui utilisent le **même QR code élève** :
+Application web mobile (PWA installable : le service worker `public/sw.js` ne met en cache que l'interface, jamais les données), entièrement en français, avec deux modules qui utilisent le **même QR code élève** :
 
 - **CANTINE** : scan rapide, enregistrement des passages, blocage des doubles passages, historique et exports.
 - **EMPLOI DU TEMPS** : import des emplois du temps (PDF texte, PDF scanné, photo), extraction, vérification obligatoire, publication, puis affichage instantané du cours en cours après un scan.
@@ -87,6 +87,7 @@ Le QR code contient uniquement un jeton aléatoire (`VHSC-` + 24 caractères, 12
 - La confirmation verte ne s'affiche **qu'après l'acquittement du serveur**. En cas d'échec, le message « ÉCHEC : PASSAGE NON ENREGISTRÉ » s'affiche.
 - Les refus (QR code invalide ou inconnu, élève inactif, élève non autorisé) sont journalisés.
 - L'historique est filtrable par date, classe, élève et service. Il affiche séparément les passages, les élèves distincts, les refus et les doublons. Les exports Excel et CSV ne contiennent que les passages confirmés.
+- **Rapport imprimable (PDF)** : imprime la période et les filtres choisis (en-tête, compteurs, tableau) ; « Enregistrer au format PDF » dans la boîte d'impression du téléphone produit le PDF. Les heures utilisent le fuseau du calendrier scolaire (Africa/Tunis par défaut).
 
 ### Emploi du temps : importation
 1. **Document** : PDF, JPG ou PNG ; une classe, plusieurs classes, ou un groupe ; période de validité. Le nom du fichier, le nombre de pages et un aperçu s'affichent.
